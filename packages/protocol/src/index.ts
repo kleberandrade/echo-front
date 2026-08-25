@@ -4,7 +4,7 @@ import { z } from 'zod';
  * ECHO//FRONT — protocolo agente ↔ servidor.
  * Referência humana: docs/04-protocolo-agente.md
  */
-export const PROTOCOL_VERSION = '0.3.0';
+export const PROTOCOL_VERSION = '0.4.0';
 
 // ---------------------------------------------------------------------------
 // Primitivas
@@ -48,7 +48,7 @@ export type Team = z.infer<typeof TeamSchema>;
 // ---------------------------------------------------------------------------
 
 export const VisualReadingSchema = z.object({
-  type: z.enum(['unit', 'decoy', 'fragment', 'movement']),
+  type: z.enum(['unit', 'decoy', 'fragment', 'movement', 'core']),
   class_guess: UnitClassSchema.optional(),
   direction: DirectionSchema,
   distance: z.number().nonnegative(),
@@ -66,7 +66,7 @@ export const SoundReadingSchema = z.object({
 });
 
 export const RadarReadingSchema = z.object({
-  type: z.enum(['unit', 'decoy', 'fragment', 'pulse_origin']),
+  type: z.enum(['unit', 'decoy', 'fragment', 'pulse_origin', 'core']),
   direction: DirectionSchema,
   /** Posição quantizada (células 2×2); ausente em pulse_origin. */
   position: PositionSchema.optional(),
@@ -195,7 +195,7 @@ export const MatchStartPayloadSchema = z.object({
 export const MatchEndPayloadSchema = z.object({
   score: z.object({ cian: z.number().int(), magenta: z.number().int() }),
   winner: TeamSchema.or(z.literal('draw')),
-  reason: z.enum(['fragments_delivered', 'time_up', 'forfeit']),
+  reason: z.enum(['fragments_delivered', 'core_destroyed', 'time_up', 'forfeit']),
   seed: z.string(),
   finalHash: z.string(),
 });
