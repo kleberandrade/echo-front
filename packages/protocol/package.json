@@ -1,7 +1,7 @@
 {
   "name": "@echo-front/protocol",
   "version": "0.1.0",
-  "private": true,
+  "description": "Protocolo de mensagens (Zod) entre agentes e o servidor do ECHO//FRONT.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -11,6 +11,11 @@
       "default": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
@@ -22,5 +27,23 @@
   "devDependencies": {
     "typescript": "^5.7.2",
     "vitest": "^3.0.5"
+  },
+  "keywords": [
+    "echo-front",
+    "game-protocol",
+    "ai-agents",
+    "websocket"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kleberandrade/echo-front.git",
+    "directory": "packages/protocol"
+  },
+  "homepage": "https://github.com/kleberandrade/echo-front/tree/main/packages/protocol#readme",
+  "bugs": "https://github.com/kleberandrade/echo-front/issues",
+  "author": "Kleber Andrade",
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "@echo-front/sim",
   "version": "0.6.0",
-  "private": true,
+  "description": "Simulador determinístico da arena tática do ECHO//FRONT — movimento, sensores com ruído reproduzível, fog com envelhecimento.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -11,6 +11,11 @@
       "default": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "sim:run": "node dist/cli.js",
@@ -25,5 +30,23 @@
     "@types/node": "^22.20.1",
     "typescript": "^5.7.2",
     "vitest": "^3.0.5"
+  },
+  "keywords": [
+    "echo-front",
+    "game-simulation",
+    "deterministic",
+    "ai-agents"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kleberandrade/echo-front.git",
+    "directory": "packages/sim"
+  },
+  "homepage": "https://github.com/kleberandrade/echo-front/tree/main/packages/sim#readme",
+  "bugs": "https://github.com/kleberandrade/echo-front/issues",
+  "author": "Kleber Andrade",
+  "publishConfig": {
+    "access": "public"
   }
 }

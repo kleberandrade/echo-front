@@ -1,7 +1,7 @@
 {
   "name": "@echo-front/agents-sdk",
   "version": "0.1.0",
-  "private": true,
+  "description": "SDK e bots de referência para escrever agentes do ECHO//FRONT.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -11,6 +11,11 @@
       "default": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
@@ -28,5 +33,23 @@
     "@types/ws": "^8.5.13",
     "typescript": "^5.7.2",
     "vitest": "^3.0.5"
+  },
+  "keywords": [
+    "echo-front",
+    "ai-agents",
+    "bot-sdk",
+    "websocket"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kleberandrade/echo-front.git",
+    "directory": "packages/agents-sdk"
+  },
+  "homepage": "https://github.com/kleberandrade/echo-front/tree/main/packages/agents-sdk#readme",
+  "bugs": "https://github.com/kleberandrade/echo-front/issues",
+  "author": "Kleber Andrade",
+  "publishConfig": {
+    "access": "public"
   }
 }
