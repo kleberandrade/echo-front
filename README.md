@@ -40,6 +40,14 @@ npx wscat -c ws://localhost:3001/agent
 > {"v":"0.1.0","type":"hello","payload":{"agentName":"meu-agente"}}
 ```
 
+`./scripts/start.sh` acima é só o ambiente de dev (processos Node direto, sem container). O sandbox Docker do torneio oficial é separado — precisa de Docker de verdade instalado:
+
+```bash
+./scripts/run-tournament-sandbox.sh   # rede --internal + orquestrador + 2 agentes de exemplo, tudo containerizado
+```
+
+Ver [docs/07-campeonato.md](./docs/07-campeonato.md) para o contrato completo.
+
 ## Deploy
 
 **Vercel publica só `apps/web`.** O `package.json` da raiz não tem `next` — se o Root Directory ficar no repo, o build quebra com _No Next.js version detected_.

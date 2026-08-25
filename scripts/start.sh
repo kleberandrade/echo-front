@@ -10,6 +10,11 @@
 # não têm modo watch — apps/server e apps/web importam o `dist/` compilado
 # deles via workspace:*, então se esse dist/ não existir (primeiro clone) ou
 # estiver desatualizado, o dev quebra ou usa código velho.
+#
+# Não sobe Docker: isso aqui é só o ambiente de dev local (server + web
+# rodando direto como processos Node, sem container). O sandbox Docker do
+# torneio oficial é outra coisa, opcional, separada — ver
+# ./scripts/run-tournament-sandbox.sh e docs/07-campeonato.md.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -86,6 +91,7 @@ cat <<EOF
     server  http://localhost:3001   (WS: /agent, /spectate · REST: /health, /api/*)
     web     http://localhost:3000
     Ctrl+C encerra os dois.
+    (sandbox Docker do torneio é separado: ./scripts/run-tournament-sandbox.sh)
 
 EOF
 

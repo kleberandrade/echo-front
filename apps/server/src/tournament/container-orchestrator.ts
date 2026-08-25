@@ -72,9 +72,13 @@ export class ContainerOrchestrator {
 
   /**
    * Cria a rede isolada se ainda não existir. `--internal`: o Docker não
-   * instala rota padrão para fora da rede — os containers alcançam o
-   * orquestrador (rodando no host ou noutro container da mesma rede) mas não
-   * saem para a internet, cumprindo "sem rede externa" do doc 07.
+   * instala rota padrão para fora da rede, cumprindo "sem rede externa" do
+   * doc 07 — mas isso também tira a rota pro HOST em pelo menos parte das
+   * implementações (Docker Engine em Linux não garante `host.docker.internal`
+   * numa rede `--internal`). Por isso o `wsUrl` de cada agente deve apontar
+   * pra OUTRO CONTAINER nesta mesma rede (ex.: o orquestrador rodando via
+   * `apps/server/Dockerfile`, ver `scripts/run-tournament-sandbox.sh`), não
+   * pro host — é o único destino que uma rede `--internal` garante alcançável.
    */
   async ensureNetwork(): Promise<void> {
     const exists = await this.runner
