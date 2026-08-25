@@ -121,9 +121,7 @@ export default function ReplayViewer({ replayUrl }: { replayUrl: string }) {
         <ScorePips score={state.score.cian} color="#22d3ee" />
         <Panel className="px-4 py-1 text-center">
           <span className="text-2xl font-bold text-cian">{state.score.cian}</span>
-          <span className="mx-3 text-xl text-slate-200">
-            {fmtClock(DEFAULT_CONFIG.totalCycles - state.cycle)}
-          </span>
+          <span className="mx-3 text-xl text-slate-200">{fmtClock(DEFAULT_CONFIG.totalCycles - state.cycle)}</span>
           <span className="text-2xl font-bold text-magenta">{state.score.magenta}</span>
           <p className="text-[9px] tracking-widest text-slate-500">
             CICLO {state.cycle}/{DEFAULT_CONFIG.totalCycles}
@@ -148,6 +146,7 @@ export default function ReplayViewer({ replayUrl }: { replayUrl: string }) {
             progress={progress}
             mode={mode}
             selectedUnitId={selected}
+            selectedDecision={decision}
             onSelectUnit={setSelected}
           />
           <p className="pointer-events-none absolute left-3 top-2 text-[10px] tracking-[0.35em] text-slate-500">
@@ -198,17 +197,12 @@ export default function ReplayViewer({ replayUrl }: { replayUrl: string }) {
           <ul className="max-h-[500px] space-y-[6px] overflow-y-auto">
             {feed.map(([c, e], i) => (
               <li key={`${c}-${e}-${i}`}>
-                <button
-                  onClick={() => seek(c)}
-                  className="flex items-start gap-2 text-left hover:brightness-150"
-                >
+                <button onClick={() => seek(c)} className="flex items-start gap-2 text-left hover:brightness-150">
                   <span className="mt-[1px] text-sm" style={{ color: eventColor(e) }}>
                     {eventIcon(e)}
                   </span>
                   <span>
-                    <span className="mr-1 text-slate-600">
-                      {fmtClock(DEFAULT_CONFIG.totalCycles - c)}
-                    </span>
+                    <span className="mr-1 text-slate-600">{fmtClock(DEFAULT_CONFIG.totalCycles - c)}</span>
                     <span style={{ color: eventColor(e) }}>{fmtEvent(e).toUpperCase()}</span>
                   </span>
                 </button>

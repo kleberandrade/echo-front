@@ -5,6 +5,7 @@
  * onisciente por ciclo) e renderiza com a mesma arena do replay.
  */
 import { useEffect, useRef, useState } from 'react';
+import { parseSpectateMessage } from '@echo-front/protocol';
 import type { MatchState } from '@echo-front/sim';
 import ArenaView, { type ViewMode } from './ArenaView';
 
@@ -26,23 +27,20 @@ export default function LiveViewer({ wsUrl }: { wsUrl: string }) {
     ws.onerror = () => setStatus(`sem conexão com ${wsUrl}`);
     ws.onmessage = (ev) => {
       try {
-        const msg = JSON.parse(ev.data as string) as {
-          type: string;
-          state?: MatchState;
-          message?: string;
-          winner?: string;
-        };
-        if (msg.type === 'spectate_state' && msg.state) {
-          setPair((p) => ({ prev: p?.cur ?? msg.state!, cur: msg.state! }));
+        // Canal formalizado no protocolo 0.3.0 (SpectateMessageSchema).
+        const msg = parseSpectateMessage(ev.data as string);
+        if (msg.type === 'spectate_state') {
+          const state = msg.state as unknown as MatchState;
+          setPair((p) => ({ prev: p?.cur ?? state, cur: state }));
           lastAtRef.current = performance.now();
           setStatus('ao vivo');
         } else if (msg.type === 'spectate_idle') {
-          setStatus(msg.message ?? 'nenhuma partida em andamento');
-        } else if (msg.type === 'spectate_end') {
-          setStatus(`fim de partida — vencedor: ${msg.winner ?? '?'}`);
+          setStatus(msg.message);
+        } else {
+          setStatus(`fim de partida — vencedor: ${msg.winner} (${msg.finalHash.slice(0, 8)}…)`);
         }
       } catch {
-        /* ignora frames malformados */
+        /* frame fora do schema: ignora */
       }
     };
     return () => ws.close();

@@ -7,6 +7,7 @@
  * war por time. Camada de glow = redesenho borrado das formas-chave.
  */
 import { useEffect, useRef } from 'react';
+import type { DecisionPayload } from '@echo-front/protocol';
 import {
   ARENA_ALPHA,
   DEFAULT_CONFIG,
@@ -18,15 +19,36 @@ import {
 
 export type ViewMode = 'all' | 'cian' | 'magenta';
 
+export interface Hypothesis {
+  position: [number, number];
+  confidence: number;
+  label?: string;
+}
+
 export interface ArenaViewProps {
   state: MatchState;
   prevState?: MatchState;
   progress: number;
   mode: ViewMode;
   selectedUnitId?: string;
+  /** Decisão registrada da unidade selecionada (para crença × realidade). */
+  selectedDecision?: DecisionPayload;
   onSelectUnit?: (unitId: string | undefined) => void;
   width?: number;
   height?: number;
+}
+
+/** Extrai a convenção `debug.hypotheses` de uma decisão (sprint-07). */
+export function hypothesesOf(decision?: DecisionPayload): Hypothesis[] {
+  const raw = (decision?.debug as { hypotheses?: unknown } | undefined)?.hypotheses;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (h): h is Hypothesis =>
+      typeof h === 'object' &&
+      h !== null &&
+      Array.isArray((h as Hypothesis).position) &&
+      typeof (h as Hypothesis).confidence === 'number',
+  );
 }
 
 const COLORS = {
@@ -76,15 +98,7 @@ function circleProj(g: Gfx, cx: number, cy: number, r: number, segments = 44): G
 }
 
 /** Círculo pontilhado (estética de circuito). */
-function dottedCircle(
-  g: Gfx,
-  cx: number,
-  cy: number,
-  r: number,
-  color: number,
-  alpha: number,
-  dots = 36,
-): void {
+function dottedCircle(g: Gfx, cx: number, cy: number, r: number, color: number, alpha: number, dots = 36): void {
   for (let i = 0; i < dots; i++) {
     const a = (i / dots) * 2 * Math.PI;
     const [sx, sy] = projPoint(cx + r * Math.cos(a), cy + r * Math.sin(a));
@@ -92,11 +106,7 @@ function dottedCircle(
   }
 }
 
-function conePts(
-  u: { x: number; y: number; heading: number },
-  fov: number,
-  range: number,
-): [number, number][] {
+function conePts(u: { x: number; y: number; heading: number }, fov: number, range: number): [number, number][] {
   const cx = u.x / 1000;
   const cy = u.y / 1000;
   const pts: [number, number][] = [[cx, cy]];
@@ -126,40 +136,12 @@ function perceived(state: MatchState, team: 'cian' | 'magenta', tx: number, ty: 
 }
 
 /** Diamante (cristal) projetado no ponto, com altura em px. */
-function crystal(
-  g: Gfx,
-  x: number,
-  y: number,
-  size: number,
-  color: number,
-  alpha: number,
-  lift = 0,
-): void {
+function crystal(g: Gfx, x: number, y: number, size: number, color: number, alpha: number, lift = 0): void {
   const [sx, syRaw] = projPoint(x, y);
   const sy = syRaw - lift;
-  g.poly([
-    sx,
-    sy - size * 1.6,
-    sx + size,
-    sy - size * 0.3,
-    sx,
-    sy + size * 0.5,
-    sx - size,
-    sy - size * 0.3,
-  ]).fill({ color, alpha });
-  g.poly([
-    sx,
-    sy - size * 1.6,
-    sx + size,
-    sy - size * 0.3,
-    sx,
-    sy + size * 0.5,
-    sx - size,
-    sy - size * 0.3,
-  ]).stroke({ width: 1, color: 0xffffff, alpha: alpha * 0.35 });
-  g.moveTo(sx, sy - size * 1.6)
-    .lineTo(sx, sy + size * 0.5)
-    .stroke({ width: 0.8, color: 0xffffff, alpha: alpha * 0.25 });
+  g.poly([sx, sy - size * 1.6, sx + size, sy - size * 0.3, sx, sy + size * 0.5, sx - size, sy - size * 0.3]).fill({ color, alpha });
+  g.poly([sx, sy - size * 1.6, sx + size, sy - size * 0.3, sx, sy + size * 0.5, sx - size, sy - size * 0.3]).stroke({ width: 1, color: 0xffffff, alpha: alpha * 0.35 });
+  g.moveTo(sx, sy - size * 1.6).lineTo(sx, sy + size * 0.5).stroke({ width: 0.8, color: 0xffffff, alpha: alpha * 0.25 });
 }
 
 export default function ArenaView(props: ArenaViewProps) {
@@ -218,27 +200,14 @@ export default function ArenaView(props: ArenaViewProps) {
         const [bx, by] = projPoint(MAP.width, y);
         ground.moveTo(ax, ay).lineTo(bx, by).stroke({ width: 1, color: COLORS.grid, alpha: 0.35 });
       }
-      polyProj(ground, [
-        [0, 0],
-        [MAP.width, 0],
-        [MAP.width, MAP.height],
-        [0, MAP.height],
-      ]).stroke({
+      polyProj(ground, [[0, 0], [MAP.width, 0], [MAP.width, MAP.height], [0, MAP.height]]).stroke({
         width: 1.5,
         color: 0x155e6e,
         alpha: 0.8,
       });
       // Halos de território nos cantos (ciano a oeste, magenta a leste).
-      polyProj(groundGlow, [
-        [0, 0],
-        [10, 0],
-        [0, 36],
-      ]).fill({ color: COLORS.cianDim, alpha: 0.25 });
-      polyProj(groundGlow, [
-        [64, 0],
-        [64, 36],
-        [54, 36],
-      ]).fill({ color: COLORS.magentaDim, alpha: 0.25 });
+      polyProj(groundGlow, [[0, 0], [10, 0], [0, 36]]).fill({ color: COLORS.cianDim, alpha: 0.25 });
+      polyProj(groundGlow, [[64, 0], [64, 36], [54, 36]]).fill({ color: COLORS.magentaDim, alpha: 0.25 });
 
       // Obstáculos: blocos wireframe translúcidos "extrudados".
       for (const r of MAP.obstacles) {
@@ -253,10 +222,7 @@ export default function ArenaView(props: ArenaViewProps) {
         polyProj(ground, corners, LIFT).stroke({ width: 1.2, color: COLORS.wire, alpha: 0.9 });
         for (const [cx, cy] of corners) {
           const [sx, sy] = projPoint(cx, cy);
-          ground
-            .moveTo(sx, sy)
-            .lineTo(sx, sy - LIFT)
-            .stroke({ width: 1, color: COLORS.wire, alpha: 0.7 });
+          ground.moveTo(sx, sy).lineTo(sx, sy - LIFT).stroke({ width: 1, color: COLORS.wire, alpha: 0.7 });
         }
         polyProj(ground, corners).stroke({ width: 1, color: COLORS.wire, alpha: 0.4 });
       }
@@ -288,10 +254,7 @@ export default function ArenaView(props: ArenaViewProps) {
       app.canvas.addEventListener('click', (ev) => {
         const rect = app!.canvas.getBoundingClientRect();
         const scaleX = app!.canvas.width / rect.width / app!.renderer.resolution;
-        const [wx, wy] = unproj(
-          (ev.clientX - rect.left) * scaleX,
-          (ev.clientY - rect.top) * scaleX,
-        );
+        const [wx, wy] = unproj((ev.clientX - rect.left) * scaleX, (ev.clientY - rect.top) * scaleX);
         const { state, onSelectUnit } = propsRef.current;
         let best: string | undefined;
         let bestD = 2.5;
@@ -329,58 +292,25 @@ export default function ArenaView(props: ArenaViewProps) {
         if (u.class === 'observer') {
           // Tetraedro (como o CIAN SCOUT do concept)
           const s = 9 * scale;
-          g.poly([sx, sy - s * 1.8, sx + s, sy + s * 0.4, sx - s, sy + s * 0.4]).fill({
-            color,
-            alpha: alpha * 0.85,
-          });
-          g.poly([sx, sy - s * 1.8, sx + s, sy + s * 0.4, sx - s, sy + s * 0.4]).stroke({
-            width: 1.2,
-            color: 0xffffff,
-            alpha: alpha * 0.5,
-          });
-          g.moveTo(sx, sy - s * 1.8)
-            .lineTo(sx, sy + s * 0.4)
-            .stroke({ width: 0.8, color: 0xffffff, alpha: alpha * 0.35 });
+          g.poly([sx, sy - s * 1.8, sx + s, sy + s * 0.4, sx - s, sy + s * 0.4]).fill({ color, alpha: alpha * 0.85 });
+          g.poly([sx, sy - s * 1.8, sx + s, sy + s * 0.4, sx - s, sy + s * 0.4]).stroke({ width: 1.2, color: 0xffffff, alpha: alpha * 0.5 });
+          g.moveTo(sx, sy - s * 1.8).lineTo(sx, sy + s * 0.4).stroke({ width: 0.8, color: 0xffffff, alpha: alpha * 0.35 });
         } else if (u.class === 'phantom') {
           // Prisma fantasma
           const s = 8 * scale;
-          g.poly([sx, sy - s * 1.9, sx + s * 0.8, sy, sx, sy + s * 0.5, sx - s * 0.8, sy]).stroke({
-            width: 1.4,
-            color,
-            alpha,
-          });
-          g.poly([sx, sy - s * 1.9, sx + s * 0.8, sy, sx, sy + s * 0.5, sx - s * 0.8, sy]).fill({
-            color,
-            alpha: alpha * 0.25,
-          });
+          g.poly([sx, sy - s * 1.9, sx + s * 0.8, sy, sx, sy + s * 0.5, sx - s * 0.8, sy]).stroke({ width: 1.4, color, alpha });
+          g.poly([sx, sy - s * 1.9, sx + s * 0.8, sy, sx, sy + s * 0.5, sx - s * 0.8, sy]).fill({ color, alpha: alpha * 0.25 });
         } else {
           // Runner: obelisco
           const s = 8 * scale;
-          g.poly([
-            sx,
-            sy - s * 2.1,
-            sx + s * 0.7,
-            sy - s * 0.3,
-            sx,
-            sy + s * 0.4,
-            sx - s * 0.7,
-            sy - s * 0.3,
-          ]).fill({ color, alpha: alpha * 0.9 });
-          g.poly([
-            sx,
-            sy - s * 2.1,
-            sx + s * 0.7,
-            sy - s * 0.3,
-            sx,
-            sy + s * 0.4,
-            sx - s * 0.7,
-            sy - s * 0.3,
-          ]).stroke({ width: 1.1, color: 0xffffff, alpha: alpha * 0.45 });
+          g.poly([sx, sy - s * 2.1, sx + s * 0.7, sy - s * 0.3, sx, sy + s * 0.4, sx - s * 0.7, sy - s * 0.3]).fill({ color, alpha: alpha * 0.9 });
+          g.poly([sx, sy - s * 2.1, sx + s * 0.7, sy - s * 0.3, sx, sy + s * 0.4, sx - s * 0.7, sy - s * 0.3]).stroke({ width: 1.1, color: 0xffffff, alpha: alpha * 0.45 });
         }
       };
 
       app.ticker.add(() => {
-        const { state, prevState, progress, mode, selectedUnitId } = propsRef.current;
+        const { state, prevState, progress, mode, selectedUnitId, selectedDecision } =
+          propsRef.current;
         const g = dynamic;
         g.clear();
         glow.clear();
@@ -418,21 +348,15 @@ export default function ArenaView(props: ArenaViewProps) {
           if (!arr || arr.length < 2) continue;
           for (let i = 1; i < arr.length; i++) {
             const [sx, sy] = projPoint(arr[i]![0], arr[i]![1]);
-            g.circle(sx, sy, 1.3).fill({
-              color: COLORS[u.team],
-              alpha: 0.06 + (0.4 * i) / arr.length,
-            });
+            g.circle(sx, sy, 1.3).fill({ color: COLORS[u.team], alpha: 0.06 + (0.4 * i) / arr.length });
           }
           const [ax, ay] = projPoint(arr[arr.length - 2]![0], arr[arr.length - 2]![1]);
           const [bx, by] = projPoint(arr[arr.length - 1]![0], arr[arr.length - 1]![1]);
           const ang = Math.atan2(by - ay, bx - ax);
           g.poly([
-            bx + 5 * Math.cos(ang),
-            by + 5 * Math.sin(ang),
-            bx + Math.cos(ang + 2.5) * 4,
-            by + Math.sin(ang + 2.5) * 4,
-            bx + Math.cos(ang - 2.5) * 4,
-            by + Math.sin(ang - 2.5) * 4,
+            bx + 5 * Math.cos(ang), by + 5 * Math.sin(ang),
+            bx + Math.cos(ang + 2.5) * 4, by + Math.sin(ang + 2.5) * 4,
+            bx + Math.cos(ang - 2.5) * 4, by + Math.sin(ang - 2.5) * 4,
           ]).fill({ color: COLORS[u.team], alpha: 0.5 });
         }
 
@@ -441,15 +365,8 @@ export default function ArenaView(props: ArenaViewProps) {
           if (!u.alive || u.hiddenCycles > 0) continue;
           if (mode !== 'all' && u.team !== mode) continue;
           const stats = CFG.classes[u.class];
-          polyProj(g, conePts(u, stats.visionFov, stats.visionRange)).fill({
-            color: COLORS[u.team],
-            alpha: 0.05,
-          });
-          polyProj(g, conePts(u, stats.visionFov, stats.visionRange)).stroke({
-            width: 1,
-            color: COLORS[u.team],
-            alpha: 0.12,
-          });
+          polyProj(g, conePts(u, stats.visionFov, stats.visionRange)).fill({ color: COLORS[u.team], alpha: 0.05 });
+          polyProj(g, conePts(u, stats.visionFov, stats.visionRange)).stroke({ width: 1, color: COLORS[u.team], alpha: 0.12 });
         }
 
         // Anéis de sonar dos observers (idle, como no concept).
@@ -460,41 +377,21 @@ export default function ArenaView(props: ArenaViewProps) {
           const phase = (state.cycle % 3) / 3 + progress / 3;
           for (let i = 0; i < 3; i++) {
             const r = ((i + phase) / 3) * 9;
-            circleProj(g, cx, cy, r).stroke({
-              width: 1,
-              color: COLORS[u.team],
-              alpha: 0.14 * (1 - r / 9) + 0.02,
-            });
+            circleProj(g, cx, cy, r).stroke({ width: 1, color: COLORS[u.team], alpha: 0.14 * (1 - r / 9) + 0.02 });
           }
         }
 
         // Pulsos de radar.
         for (const p of state.pulses) {
           const r = Math.max(1, progress) * CFG.sensors.radarRadius;
-          circleProj(g, p.x / 1000, p.y / 1000, r).stroke({
-            width: 2,
-            color: COLORS[p.team],
-            alpha: 0.55 * (1 - progress * 0.7),
-          });
-          circleProj(g, p.x / 1000, p.y / 1000, r * 0.66).stroke({
-            width: 1,
-            color: COLORS[p.team],
-            alpha: 0.3,
-          });
-          circleProj(glow, p.x / 1000, p.y / 1000, r).stroke({
-            width: 4,
-            color: COLORS[p.team],
-            alpha: 0.4 * (1 - progress * 0.7),
-          });
+          circleProj(g, p.x / 1000, p.y / 1000, r).stroke({ width: 2, color: COLORS[p.team], alpha: 0.55 * (1 - progress * 0.7) });
+          circleProj(g, p.x / 1000, p.y / 1000, r * 0.66).stroke({ width: 1, color: COLORS[p.team], alpha: 0.3 });
+          circleProj(glow, p.x / 1000, p.y / 1000, r).stroke({ width: 4, color: COLORS[p.team], alpha: 0.4 * (1 - progress * 0.7) });
         }
 
         // Ruídos.
         for (const n of state.noises) {
-          circleProj(g, n.x / 1000, n.y / 1000, 1.5 + 2 * progress).stroke({
-            width: 1.5,
-            color: 0xffffff,
-            alpha: 0.3 * n.intensity * (1 - progress),
-          });
+          circleProj(g, n.x / 1000, n.y / 1000, 1.5 + 2 * progress).stroke({ width: 1.5, color: 0xffffff, alpha: 0.3 * n.intensity * (1 - progress) });
         }
 
         // Fragmentos no chão: cristal âmbar em pedestal com glow.
@@ -515,19 +412,11 @@ export default function ArenaView(props: ArenaViewProps) {
           if (!visibleHere) continue;
           const [sx, sy] = projPoint(d.x / 1000, d.y / 1000);
           const flicker = 0.55 + 0.35 * Math.sin(progress * Math.PI * 6 + d.x);
-          g.poly([sx, sy - 15, sx + 7, sy + 2, sx - 7, sy + 2]).stroke({
-            width: 1.4,
-            color: COLORS[d.team],
-            alpha: flicker,
-          });
-          glow
-            .poly([sx, sy - 15, sx + 7, sy + 2, sx - 7, sy + 2])
-            .stroke({ width: 3, color: COLORS[d.team], alpha: flicker * 0.5 });
+          g.poly([sx, sy - 15, sx + 7, sy + 2, sx - 7, sy + 2]).stroke({ width: 1.4, color: COLORS[d.team], alpha: flicker });
+          glow.poly([sx, sy - 15, sx + 7, sy + 2, sx - 7, sy + 2]).stroke({ width: 3, color: COLORS[d.team], alpha: flicker * 0.5 });
           dottedCircle(g, d.x / 1000, d.y / 1000, 1.1, COLORS[d.team], flicker * 0.5, 12);
           if (mode === 'all') {
-            g.moveTo(sx - 6, sy - 9)
-              .lineTo(sx + 6, sy - 3)
-              .stroke({ width: 1, color: 0xffffff, alpha: 0.6 });
+            g.moveTo(sx - 6, sy - 9).lineTo(sx + 6, sy - 3).stroke({ width: 1, color: 0xffffff, alpha: 0.6 });
           }
         }
 
@@ -546,9 +435,7 @@ export default function ArenaView(props: ArenaViewProps) {
 
           const rad = (u.heading * Math.PI) / 180;
           const [hx, hy] = projPoint(wx + 2.0 * Math.cos(rad), wy + 2.0 * Math.sin(rad));
-          g.moveTo(sx, sy - 4)
-            .lineTo(hx, hy - 4)
-            .stroke({ width: 1.4, color: 0xffffff, alpha: 0.55 * alpha });
+          g.moveTo(sx, sy - 4).lineTo(hx, hy - 4).stroke({ width: 1.4, color: 0xffffff, alpha: 0.55 * alpha });
 
           if (u.carryingFragment) {
             crystal(g, wx, wy, 4, COLORS.amber, 1, 26);
@@ -566,6 +453,35 @@ export default function ArenaView(props: ArenaViewProps) {
             color: frac > 0.5 ? 0x3ddc84 : frac > 0.25 ? COLORS.amber : 0xe64c5b,
             alpha: 0.95,
           });
+        }
+
+        // Crença × realidade: marcadores ✕ onde a IA selecionada ACREDITA que
+        // há algo — no onisciente, o espectador compara com as posições reais.
+        const selected = selectedUnitId
+          ? state.units.find((u) => u.id === selectedUnitId)
+          : undefined;
+        if (selected && selected.alive) {
+          for (const h of hypothesesOf(selectedDecision)) {
+            const [hx, hy] = projPoint(h.position[0], h.position[1]);
+            const a = 0.35 + 0.55 * Math.min(1, h.confidence);
+            g.moveTo(hx - 6, hy - 6).lineTo(hx + 6, hy + 6).stroke({ width: 2, color: 0x3ddc84, alpha: a });
+            g.moveTo(hx - 6, hy + 6).lineTo(hx + 6, hy - 6).stroke({ width: 2, color: 0x3ddc84, alpha: a });
+            dottedCircle(g, h.position[0], h.position[1], 1.4, 0x3ddc84, a * 0.6, 14);
+            // Linha de crença: da unidade até a hipótese.
+            const [ux, uy] = projPoint(selected.x / 1000, selected.y / 1000);
+            g.moveTo(ux, uy - 4).lineTo(hx, hy).stroke({ width: 1, color: 0x3ddc84, alpha: a * 0.35 });
+          }
+          // Seta de intenção: direção DECIDIDA (verde) vs rumo executado (branco já existe).
+          const dir = selectedDecision?.movement?.direction;
+          if (dir !== undefined) {
+            const rad = (dir * Math.PI) / 180;
+            const [ux, uy] = projPoint(selected.x / 1000, selected.y / 1000);
+            const [tx, ty] = projPoint(
+              selected.x / 1000 + 3 * Math.cos(rad),
+              selected.y / 1000 + 3 * Math.sin(rad),
+            );
+            g.moveTo(ux, uy - 4).lineTo(tx, ty - 4).stroke({ width: 1.5, color: 0x3ddc84, alpha: 0.5 });
+          }
         }
 
         // Fog of war por time.
