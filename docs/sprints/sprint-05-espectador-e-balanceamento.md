@@ -14,7 +14,6 @@
 ## Backlog
 
 ### Visual (extra desta sprint)
-
 - [x] Glow real (camada duplicada com BlurFilter) em unidades, núcleos, fragmentos, decoys e pulsos.
 - [x] Blocos de obstáculo wireframe translúcidos "extrudados" com arestas verticais.
 - [x] Chão de circuito: pontos + grid fraco + halos de território ciano/magenta nos cantos.
@@ -24,21 +23,18 @@
 - [x] HUD do concept: painéis com cantos chanfrados, placar com pips, card de unidade com barras segmentadas (INTEGRITY/ENERGY/SIGNATURE/SPEED/SENSORS), action bar 1–4 com cooldowns e destaque da ação do ciclo, minimapa SVG, seletor FOG OF WAR, event feed com ícones e relógio.
 
 ### Visões e camada de confiança
-
 - [x] Visões geral/cian/magenta (teclas 1/2/3 + botões no HUD) com fog e filtragem de percepção.
 - [x] Balão de crença sobre a unidade selecionada ("72% · chase visual") derivado do `debug` do replay.
 - [x] Painel "Decisão da IA" no card: modo, valores numéricos e mensagem ao time.
 - [ ] Comparador "crença × realidade" com marcadores de hipóteses posicionais — adiado (débito): os bots atuais publicam direções/modos, não posições hipotéticas.
 
 ### Sensores e classes
-
 - [x] Sensor térmico: calor por atividade, detecta unidades OCULTAS (contramedida do hide), rastros residuais de 3 ciclos (`heatTrails` no estado), torres como falso positivo intencional; atravessa obstáculos com atenuação de 50%.
 - [x] Rastros de calor visíveis no modo onisciente (brasas).
 - [x] Composição de times configurável (`MatchConfig.composition`, spawns extras no mapa para até 4 unidades) — Phantom instanciável.
 - [x] Bot `ghost` (phantom + runner): camuflagem em vez de fuga, sinais falsos periódicos, entrega silenciosa.
 
 ### Balanceamento
-
 - [x] Série courier × ghost (n=60, lados espelhados): **courier 43,3% × ghost 56,7%** — dentro da meta ≤65%; TODAS as vitórias do ghost sem abates (engano puro).
 - [x] courier × trickster segue 49,5% × 50,5% (n=200, sprint 3 — sem mudanças de config).
 
@@ -51,6 +47,6 @@
 
 ## Débitos / Retro
 
-- **Débito:** comparador "crença × realidade" com hipóteses posicionais — requer convenção de `debug.hypotheses[]` nos bots; proposta para a Sprint 6 junto do guia do competidor.
+- **Débito — ✅ quitado na Sprint 7:** convenção `debug.hypotheses[] = {position, confidence, label}` implementada nos bots (hunter/trickster) e renderizada como marcadores ✕ verdes com linha de crença e seta de intenção na arena.
 - **Débito:** playtest de assistibilidade com pessoas leigas — não executável neste ambiente; roteiro sugerido no doc 06.
 - **Retro:** o pedido de "melhorar o visual" rendeu mais que estética: o glow e a linguagem de ícones tornaram pulso/decoy/fragmento legíveis à distância, que era a criticidade real do espectador.

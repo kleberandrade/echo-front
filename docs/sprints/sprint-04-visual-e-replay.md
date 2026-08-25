@@ -47,6 +47,6 @@ Camada "crença × realidade" e térmico (Sprint 5); leaderboard (Sprint 6).
 ## Débitos / Retro
 
 - **Débito:** página `/docs/protocol` (referência renderizada) ficou de fora — entra na Sprint 6 junto do guia do competidor.
-- **Débito:** o smoke Playwright não roda no CI (browsers não instalados no runner); rodar localmente antes de release. Variável `PW_CHROMIUM` aponta para um Chromium alternativo.
+- **Débito — ✅ quitado na Sprint 7:** o CI ganhou o job `smoke` que instala o Chromium do Playwright e valida o replay demo (placar + hash) a cada push; screenshots viram artifact.
 - **Débito:** fog não tem "envelhecimento" da informação (memória do que já foi visto) — só o campo sensorial atual; o replay grava o suficiente para adicionar depois.
 - **Retro:** rodar o sim no browser pagou o investimento em determinismo: scrubbing instantâneo com 180 estados pré-computados em <100 ms e verificação de hash no cliente de graça.

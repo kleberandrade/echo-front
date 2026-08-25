@@ -45,6 +45,6 @@
 ## Débitos / Retro
 
 - **Débito:** rate limiting real e sandbox de containers (torneio oficial) — próximo ciclo, conforme o roadmap do doc 07.
-- **Débito:** delay anti-coaching no `/spectate`; publicação npm + template.
+- **Débito — ✅ parcialmente quitado na Sprint 7:** delay anti-coaching implementado (`spectateDelayMs` no AgentServer) e kick por payloads inválidos (3 avisos / 10 desconexão, conforme o doc 04). Pendente: publicação npm + template.
 - **Débito:** o 4º colocado (hunter) não joga o objetivo — útil como sparring, mas o roster ranqueado deveria exigir bots de objetivo.
 - **Retro:** o determinismo pagou de novo: o torneio inteiro (36 partidas ao vivo por WS) re-simulou sem 1 byte de divergência — o critério mais arriscado da sprint passou sem ajustes.

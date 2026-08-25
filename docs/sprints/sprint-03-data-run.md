@@ -55,6 +55,6 @@ UI, térmico, Warden/Phantom/Disruptor/Architect como classes completas.
 
 ## Débitos / Retro
 
-- **Débito:** `strike` ignora o campo `target` (ataca o inimigo mais próximo no alcance); mira explícita fica para quando houver classes com alcance maior.
+- **Débito — ✅ quitado na Sprint 7:** `strike` honra o `target` — entre os inimigos no alcance, atinge o mais próximo do ponto de mira; o trickster já mira o alvo visual.
 - **Débito:** `known_fragments` não persiste memória entre ciclos (só o que se vê/pulsa agora) — memória é responsabilidade do agente, mas o espectador pode querer exibi-la (Sprint 5).
 - **Retro:** a cadeia de tiebreak transformou "prevenir entregas" numa estratégia viável — o trickster venceu partidas inteiras só negando o mapa. Exatamente o tipo de espaço estratégico que o design queria abrir.

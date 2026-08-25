@@ -13,13 +13,14 @@ Arena tática 2,5D onde IAs competem por **percepção**, não por reflexo. Cada
 | [05-simulacao.md](./05-simulacao.md) | Loop de ticks, determinismo, modelo dos sensores, replay |
 | [06-espectador-e-visual.md](./06-espectador-e-visual.md) | Direção de arte, modo espectador, replay com confiança da IA |
 | [07-campeonato.md](./07-campeonato.md) | Formato de torneio, pontuação, submissão de agentes |
+| [08-deploy.md](./08-deploy.md) | Deploy (Vercel + server), CI/CD e checklist de release |
 | [sprints/](./sprints/README.md) | Roadmap de desenvolvimento (Sprint 0 a 6) |
 
 ## Estado atual
 
-- **Fase:** planejamento / pré-Sprint 0
-- **Escopo do MVP (vertical slice):** 1 arena, 2 unidades por time, 3 sensores (visão, som, radar), 3 ações especiais (`pulse_scan`, `deploy_decoy`, `hide`), partidas de 90 s, modo **Data Run**, replay determinístico.
-- **Stack:** monorepo pnpm + Turborepo · `apps/web` (Next.js + PixiJS, deploy Vercel) · `apps/server` (NestJS, simulador autoritativo) · `packages/protocol` (tipos e schemas compartilhados).
+- **Fase:** MVP completo + competição (sprints 0–7 concluídas; marcos M1–M4 atingidos).
+- **Entregue:** simulador determinístico (SIM 0.5.0) com 4 sensores e Data Run, bots de referência equilibrados, espectador PixiJS no visual do concept com fog e camada de crença, séries ranqueadas via WebSocket com replays verificáveis, leaderboard e primeiro torneio amistoso (36 partidas, zero divergência).
+- **Stack:** monorepo pnpm + Turborepo · `apps/web` (Next.js + PixiJS, deploy Vercel) · `apps/server` (NestJS, simulador autoritativo) · `packages/protocol` (schemas v0.3.0) · `packages/sim` · `packages/agents-sdk`.
 
 ## Convenções
 

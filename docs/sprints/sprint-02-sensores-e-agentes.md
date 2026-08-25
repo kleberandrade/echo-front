@@ -46,6 +46,6 @@ Fragmentos, decoy/hide, térmico, qualquer UI.
 ## Débitos / Retro
 
 - **Golden replays regenerados** (mudança intencional): o `MatchState` ganhou `messages`, `pulses`, `cycleEvents` e `cooldowns`, alterando o hash canônico. Novos hashes em `golden.test.ts`; SIM_VERSION → 0.2.0.
-- **Débito:** formato do canal `/spectate` é provisório (estado bruto, sem schema no protocol); formalizar na Sprint 4 junto com o front.
-- **Débito:** `allies` com `stale: true` ainda carrega posições atuais (não o último snapshot conhecido); histórico de posições fica para quando houver demanda real do espectador.
+- **Débito — ✅ quitado na Sprint 7:** canal `/spectate` formalizado no protocolo 0.3.0 (`SpectateMessageSchema`); o front valida os frames com o schema.
+- **Débito — ✅ quitado na Sprint 7:** sob interferência, `allies` agora entrega o ÚLTIMO snapshot conhecido (`lastAllies` no estado) com posições defasadas de verdade.
 - **Retro:** separar `AgentServer` (puro) dos gateways Nest permitiu e2e com sockets reais sem tocar em `emitDecoratorMetadata` no vitest — decisão a manter.
