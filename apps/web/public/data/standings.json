@@ -1,50 +1,50 @@
 {
-  "generatedAt": "2026-08-25T16:46:56.023Z",
-  "games": 4,
+  "generatedAt": "2026-08-25T22:01:48.057Z",
+  "games": 6,
   "standings": [
     {
       "agent": "trickster",
-      "points": 109.3,
-      "elo": 1055.2,
-      "wins": 23,
+      "points": 160.5,
+      "elo": 1032.5,
+      "wins": 34,
       "draws": 0,
-      "losses": 13,
-      "matches": 36,
-      "fragmentsDelivered": 61,
-      "noKillWins": 13
+      "losses": 20,
+      "matches": 54,
+      "fragmentsDelivered": 88,
+      "noKillWins": 18
     },
     {
       "agent": "ghost",
-      "points": 87,
-      "elo": 1011.6,
-      "wins": 17,
+      "points": 128.2,
+      "elo": 1009.1,
+      "wins": 25,
       "draws": 0,
-      "losses": 19,
-      "matches": 36,
-      "fragmentsDelivered": 49,
-      "noKillWins": 15
+      "losses": 29,
+      "matches": 54,
+      "fragmentsDelivered": 72,
+      "noKillWins": 22
     },
     {
       "agent": "hunter",
-      "points": 80.4,
-      "elo": 1000.6,
-      "wins": 17,
+      "points": 121.9,
+      "elo": 987.4,
+      "wins": 26,
       "draws": 0,
-      "losses": 19,
-      "matches": 36,
-      "fragmentsDelivered": 43,
-      "noKillWins": 7
+      "losses": 28,
+      "matches": 54,
+      "fragmentsDelivered": 64,
+      "noKillWins": 10
     },
     {
       "agent": "courier",
-      "points": 76.1,
-      "elo": 932.6,
-      "wins": 15,
+      "points": 116.8,
+      "elo": 971,
+      "wins": 23,
       "draws": 0,
-      "losses": 21,
-      "matches": 36,
-      "fragmentsDelivered": 43,
-      "noKillWins": 12
+      "losses": 31,
+      "matches": 54,
+      "fragmentsDelivered": 67,
+      "noKillWins": 18
     }
   ]
 }
