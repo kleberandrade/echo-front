@@ -1,0 +1,31 @@
+{
+  "name": "@echo-front/agents-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "match": "node dist/harness.js",
+    "batch": "node dist/batch.js"
+  },
+  "dependencies": {
+    "@echo-front/protocol": "workspace:*",
+    "@echo-front/sim": "workspace:*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5"
+  }
+}
