@@ -364,6 +364,9 @@ export function buildPerception(
       score: { ...state.score },
       time_remaining_cycles: Math.max(0, cfg.totalCycles - state.cycle),
       known_fragments: known,
+      ...(cfg.sensors.maxPulsesPerMatch > 0
+        ? { pulses_left: Math.max(0, cfg.sensors.maxPulsesPerMatch - unit.pulsesUsed) }
+        : {}),
     },
   };
 }

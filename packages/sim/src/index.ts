@@ -27,6 +27,7 @@ export {
   type Fragment,
   type FragmentsConfig,
   type FragmentState,
+  type GameMode,
   type MatchConfig,
   type MatchState,
   type Noise,
