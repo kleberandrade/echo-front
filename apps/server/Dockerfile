@@ -28,8 +28,14 @@ RUN corepack enable
 WORKDIR /repo
 COPY . .
 RUN pnpm install --frozen-lockfile
+# agents-sdk entra na cadeia mesmo não sendo usado em runtime (main.js não
+# importa) porque tournament.ts (dentro de src/, então tsc compila junto)
+# importa os TIPOS dele — sem essa build, o tsc do server quebra com
+# "Cannot find module '@echo-front/agents-sdk'". Descoberto rodando o build
+# de verdade pela primeira vez (docker build numa máquina com Docker Hub).
 RUN pnpm --filter @echo-front/protocol build \
  && pnpm --filter @echo-front/sim build \
+ && pnpm --filter @echo-front/agents-sdk build \
  && pnpm --filter @echo-front/server build
 # --legacy: workspace deps (protocol, sim) copiados como arquivos reais em
 # node_modules em vez de symlinks — necessário pra funcionar fora do
