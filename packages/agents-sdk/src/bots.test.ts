@@ -65,4 +65,24 @@ describe('wanderer × hunter (headless)', () => {
     const b = runPerceptionMatch({ seed: 'bots-3', cfg: CFG, bots: mk() });
     expect(a.replay.finalHash).toBe(b.replay.finalHash);
   });
+
+  it('sprint-10: hunter joga o objetivo em data_run (entrega fragmento contra oponente passivo)', () => {
+    const idle = () => ({});
+    const r = runPerceptionMatch({
+      seed: 'hunter-objective-1',
+      cfg: DEFAULT_CONFIG, // partida completa: precisa das 180 ciclos para achar e entregar
+      bots: { cian: hunterBot('cian'), magenta: idle },
+    });
+    expect(r.finalState.score.cian).toBeGreaterThan(0);
+  });
+
+  it('hunter delega para a rotina de cerco em core_siege', () => {
+    const idle = () => ({});
+    const r = runPerceptionMatch({
+      seed: 'hunter-siege-1',
+      cfg: { ...DEFAULT_CONFIG, mode: 'core_siege' as const, totalCycles: 180 },
+      bots: { cian: hunterBot('cian'), magenta: idle },
+    });
+    expect(r.finalState.coreIntegrity.magenta).toBeLessThan(DEFAULT_CONFIG.coreSiege.coreIntegrity);
+  });
 });

@@ -18,7 +18,7 @@ function makeBot(kind: string, team: 'cian' | 'magenta'): PerceptionBotFn {
     case 'wanderer':
       return wandererBot();
     case 'hunter':
-      return hunterBot();
+      return hunterBot(team);
     case 'courier':
       return courierBot(team);
     case 'trickster':

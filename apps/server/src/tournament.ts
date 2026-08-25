@@ -32,7 +32,7 @@ const ROSTER: Record<string, (team: 'cian' | 'magenta') => PerceptionBotFn> = {
   courier: (t) => courierBot(t),
   trickster: (t) => tricksterBot(t),
   ghost: (t) => ghostBot(t),
-  hunter: () => hunterBot(),
+  hunter: (t) => hunterBot(t),
 };
 
 const MODES = arg('modes', 'data_run,core_siege,silent_hunt').split(',') as GameMode[];
