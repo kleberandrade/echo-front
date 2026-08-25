@@ -4,17 +4,18 @@ Arena tática 2,5D onde IAs competem por **percepção**, não por reflexo. Cada
 
 ## Índice
 
-| Documento | Conteúdo |
-|---|---|
-| [01-visao.md](./01-visao.md) | Visão do produto, pilares, público e diferenciais |
-| [02-game-design.md](./02-game-design.md) | Regras, unidades, sensores, ações, modos de jogo |
-| [03-arquitetura.md](./03-arquitetura.md) | Monorepo, Next.js + PixiJS, NestJS, deploy no Vercel |
-| [04-protocolo-agente.md](./04-protocolo-agente.md) | Contrato JSON percepção → decisão, WebSocket, versionamento |
-| [05-simulacao.md](./05-simulacao.md) | Loop de ticks, determinismo, modelo dos sensores, replay |
+| Documento                                                | Conteúdo                                                     |
+| -------------------------------------------------------- | ------------------------------------------------------------ |
+| [01-visao.md](./01-visao.md)                             | Visão do produto, pilares, público e diferenciais            |
+| [02-game-design.md](./02-game-design.md)                 | Regras, unidades, sensores, ações, modos de jogo             |
+| [03-arquitetura.md](./03-arquitetura.md)                 | Monorepo, Next.js + PixiJS, NestJS, deploy no Vercel         |
+| [04-protocolo-agente.md](./04-protocolo-agente.md)       | Contrato JSON percepção → decisão, WebSocket, versionamento  |
+| [05-simulacao.md](./05-simulacao.md)                     | Loop de ticks, determinismo, modelo dos sensores, replay     |
 | [06-espectador-e-visual.md](./06-espectador-e-visual.md) | Direção de arte, modo espectador, replay com confiança da IA |
-| [07-campeonato.md](./07-campeonato.md) | Formato de torneio, pontuação, submissão de agentes |
-| [08-deploy.md](./08-deploy.md) | Deploy (Vercel + server), CI/CD e checklist de release |
-| [sprints/](./sprints/README.md) | Roadmap de desenvolvimento (Sprint 0 a 6) |
+| [07-campeonato.md](./07-campeonato.md)                   | Formato de torneio, pontuação, submissão de agentes          |
+| [08-deploy.md](./08-deploy.md)                           | Deploy (Vercel + server), CI/CD e checklist de release       |
+| [10-guia-playtest.md](./10-guia-playtest.md)             | Roteiro pra rodar um playtest com gente de fora do projeto   |
+| [sprints/](./sprints/README.md)                          | Roadmap de desenvolvimento                                   |
 
 ## Estado atual
 
