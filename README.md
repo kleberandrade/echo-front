@@ -26,6 +26,13 @@ pnpm test
 pnpm dev            # web em :3000, server em :3001
 ```
 
+Ou, para subir tudo de uma vez (install + build + dev, com `NEXT_PUBLIC_ECHO_API`/`NEXT_PUBLIC_ECHO_WS` já apontados pro server local):
+
+```bash
+./scripts/start.sh              # primeira vez / depois de puxar mudanças
+./scripts/start.sh --fast       # pula install e build (dist/ já existe)
+```
+
 Testar o gateway WS (server rodando):
 
 ```bash
