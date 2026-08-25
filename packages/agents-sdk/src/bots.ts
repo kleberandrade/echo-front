@@ -60,10 +60,25 @@ export function hunterBot(): PerceptionBotFn {
     const salt = unitSalt(unitId);
     const visual = p.sensors.visual[0];
     if (visual) {
+      const rad = (visual.direction * Math.PI) / 180;
       return {
         movement: { direction: visual.direction, speed: 1 },
         message_to_team: `chasing_${Math.round(visual.direction)}`,
-        debug: { mode: 'chase_visual', confidence: visual.confidence },
+        debug: {
+          mode: 'chase_visual',
+          confidence: visual.confidence,
+          // Convenção sprint-07: onde a IA ACREDITA que o alvo está.
+          hypotheses: [
+            {
+              position: [
+                p.self.position[0] + visual.distance * Math.cos(rad),
+                p.self.position[1] + visual.distance * Math.sin(rad),
+              ],
+              confidence: visual.confidence,
+              label: 'enemy',
+            },
+          ],
+        },
       };
     }
     const echo = p.sensors.radar.find((r) => r.type === 'unit');
@@ -75,9 +90,26 @@ export function hunterBot(): PerceptionBotFn {
     }
     const sound = strongestSound(p);
     if (sound && sound.intensity > 0.1) {
+      // Estimativa grosseira de distância a partir da intensidade (o som não
+      // dá distância — é uma CRENÇA, e o espectador vê o quão errada está).
+      const guess = Math.max(4, 26 * (1 - sound.intensity));
+      const rad = (sound.direction * Math.PI) / 180;
       return {
         movement: { direction: sound.direction, speed: 0.8 },
-        debug: { mode: 'chase_sound', intensity: sound.intensity },
+        debug: {
+          mode: 'chase_sound',
+          intensity: sound.intensity,
+          hypotheses: [
+            {
+              position: [
+                p.self.position[0] + guess * Math.cos(rad),
+                p.self.position[1] + guess * Math.sin(rad),
+              ],
+              confidence: Math.min(0.7, sound.intensity + 0.2),
+              label: 'sound_source',
+            },
+          ],
+        },
       };
     }
     const canPulse = (p.self.cooldowns['pulse_scan'] ?? 0) === 0 && p.self.energy > 60;

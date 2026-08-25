@@ -114,7 +114,28 @@ export function tricksterBot(team: Team): PerceptionBotFn {
       (v) => (v.type === 'unit' || v.type === 'movement') && v.distance <= 2.5,
     );
     if (close && p.self.energy > 40 && !p.self.carrying_fragment) {
-      return { action: 'strike', debug: { mode: 'strike', at: close.direction } };
+      const rad = (close.direction * Math.PI) / 180;
+      return {
+        action: 'strike',
+        target: [
+          pos[0] + close.distance * Math.cos(rad),
+          pos[1] + close.distance * Math.sin(rad),
+        ],
+        debug: {
+          mode: 'strike',
+          at: close.direction,
+          hypotheses: [
+            {
+              position: [
+                pos[0] + close.distance * Math.cos(rad),
+                pos[1] + close.distance * Math.sin(rad),
+              ],
+              confidence: close.confidence,
+              label: 'strike_target',
+            },
+          ],
+        },
+      };
     }
 
     if (p.self.carrying_fragment) {
