@@ -39,6 +39,11 @@ export interface AgentServerOptions {
   interGameMs: number;
   /** Diretório de dados; vazio desativa persistência. */
   dataDir: string;
+  /** Atraso da transmissão para espectadores, em ms (anti-coaching). */
+  spectateDelayMs: number;
+  /** Avisos por payload inválido antes do aviso formal / desconexão. */
+  invalidWarnAt: number;
+  invalidKickAt: number;
   seedFor: (seriesId: string, seedIndex: number) => string;
 }
 
@@ -48,6 +53,9 @@ const DEFAULT_OPTIONS: AgentServerOptions = {
   seriesGames: 6,
   interGameMs: 400,
   dataDir: 'data',
+  spectateDelayMs: 0,
+  invalidWarnAt: 3,
+  invalidKickAt: 10,
   seedFor: (seriesId, k) => `${seriesId}-seed-${k}`,
 };
 
@@ -116,9 +124,12 @@ export class LiveMatch {
     this.cycles.push({ c: this.state.cycle, d: decisions });
     this.state = stepCycle(this.state, decisions, ARENA_ALPHA, this.opts.cfg).state;
 
-    for (const ws of this.spectators) {
-      send(ws, { type: 'spectate_state', matchId: this.id, state: this.state });
-    }
+    const frame = { type: 'spectate_state', matchId: this.id, state: this.state };
+    const emit = () => {
+      for (const ws of this.spectators) send(ws, frame);
+    };
+    if (this.opts.spectateDelayMs > 0) setTimeout(emit, this.opts.spectateDelayMs);
+    else emit();
 
     if (this.state.ended) this.finish();
     else this.sendPerceptions();
@@ -181,7 +192,12 @@ export class LiveMatch {
     };
     send(this.seats.cian.ws, endMsg);
     send(this.seats.magenta.ws, endMsg);
-    for (const ws of this.spectators) send(ws, { type: 'spectate_end', ...endMsg.payload });
+    const endFrame = { type: 'spectate_end', matchId: this.id, ...endMsg.payload };
+    const emitEnd = () => {
+      for (const ws of this.spectators) send(ws, endFrame);
+    };
+    if (this.opts.spectateDelayMs > 0) setTimeout(emitEnd, this.opts.spectateDelayMs);
+    else emitEnd();
     this.onEnd?.(replay, this.state);
   }
 }
@@ -275,6 +291,7 @@ export class AgentServer {
   store: MatchStore | undefined;
   private waiting: { ws: WebSocket; name: string } | null = null;
   private bySocket = new Map<WebSocket, Series>();
+  private invalidCount = new Map<WebSocket, number>();
   private latest: LiveMatch | null = null;
   private counter = 0;
 
@@ -305,11 +322,32 @@ export class AgentServer {
     let msg;
     try {
       msg = parseAgentMessage(raw.toString('utf8'));
+      this.invalidCount.set(ws, 0); // payload válido zera a contagem
     } catch {
+      const count = (this.invalidCount.get(ws) ?? 0) + 1;
+      this.invalidCount.set(ws, count);
+      if (count >= this.opts.invalidKickAt) {
+        send(ws, {
+          v: PROTOCOL_VERSION,
+          type: 'error',
+          payload: {
+            code: 'rate_limited',
+            message: `${count} payloads inválidos — desconectando (a partida segue em no-op).`,
+          },
+        });
+        ws.close();
+        return;
+      }
       send(ws, {
         v: PROTOCOL_VERSION,
         type: 'error',
-        payload: { code: 'invalid_payload', message: 'Mensagem não passa no schema do protocolo.' },
+        payload: {
+          code: 'invalid_payload',
+          message:
+            count >= this.opts.invalidWarnAt
+              ? `Mensagem não passa no schema (aviso ${count}/${this.opts.invalidKickAt} — kick ao atingir o limite).`
+              : 'Mensagem não passa no schema do protocolo.',
+        },
       });
       return;
     }
@@ -380,6 +418,7 @@ export class AgentServer {
     if (this.waiting?.ws === ws) this.waiting = null;
     this.bySocket.get(ws)?.detach(ws);
     this.bySocket.delete(ws);
+    this.invalidCount.delete(ws);
   }
 }
 
