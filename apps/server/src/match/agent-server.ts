@@ -28,6 +28,7 @@ import {
   DEFAULT_CONFIG,
 } from '@echo-front/sim';
 import { MatchStore, scoreMatch } from './store.js';
+import { IpRateLimiter, type RateLimiterOptions } from './rate-limiter.js';
 
 export interface AgentServerOptions {
   /** Duração real de um ciclo em ms (500 = tempo de jogo 1:1). */
@@ -45,6 +46,10 @@ export interface AgentServerOptions {
   invalidWarnAt: number;
   invalidKickAt: number;
   seedFor: (seriesId: string, seedIndex: number) => string;
+  /** Rate limiting por IP no canal de agentes (sprint-11). `null` desativa. */
+  agentRateLimit: RateLimiterOptions | null;
+  /** Rate limiting por IP no canal de espectador (mais permissivo: leitura pública). */
+  spectatorRateLimit: RateLimiterOptions | null;
 }
 
 const DEFAULT_OPTIONS: AgentServerOptions = {
@@ -57,6 +62,10 @@ const DEFAULT_OPTIONS: AgentServerOptions = {
   invalidWarnAt: 3,
   invalidKickAt: 10,
   seedFor: (seriesId, k) => `${seriesId}-seed-${k}`,
+  // Um agente real abre 1 conexão por partida; generoso o bastante para rodar
+  // vários bots locais ao mesmo tempo, apertado o bastante para barrar flood.
+  agentRateLimit: { maxConnectionsPerMinute: 60, maxConcurrentPerIp: 20 },
+  spectatorRateLimit: { maxConnectionsPerMinute: 120, maxConcurrentPerIp: 40 },
 };
 
 interface Seat {
@@ -249,7 +258,9 @@ class Series {
         const alive = (team: Team) =>
           finalState.units.filter((u) => u.team === team && u.alive).length;
         const spent = (team: Team) =>
-          finalState.units.filter((u) => u.team === team).reduce((acc, u) => acc + u.energySpent, 0);
+          finalState.units
+            .filter((u) => u.team === team)
+            .reduce((acc, u) => acc + u.energySpent, 0);
         this.store.recordResult(
           {
             matchId,
@@ -295,26 +306,63 @@ export class AgentServer {
   private invalidCount = new Map<WebSocket, number>();
   private latest: LiveMatch | null = null;
   private counter = 0;
+  private agentLimiter: IpRateLimiter | null = null;
+  private spectatorLimiter: IpRateLimiter | null = null;
+  private agentIpBySocket = new Map<WebSocket, string>();
 
   constructor() {
     this.initStore();
+    this.initLimiters();
   }
 
   private initStore(): void {
     this.store = this.opts.dataDir ? new MatchStore(this.opts.dataDir) : undefined;
   }
 
+  private initLimiters(): void {
+    this.agentLimiter = this.opts.agentRateLimit
+      ? new IpRateLimiter(this.opts.agentRateLimit)
+      : null;
+    this.spectatorLimiter = this.opts.spectatorRateLimit
+      ? new IpRateLimiter(this.opts.spectatorRateLimit)
+      : null;
+  }
+
   configure(opts: Partial<AgentServerOptions>): void {
     this.opts = { ...this.opts, ...opts };
     this.initStore();
+    if ('agentRateLimit' in opts || 'spectatorRateLimit' in opts) this.initLimiters();
   }
 
-  attachAgentSocket(ws: WebSocket): void {
+  /** `ip` é opcional (torneio local/headless não passa) — sem IP, o rate limit é ignorado. */
+  attachAgentSocket(ws: WebSocket, ip?: string): void {
+    if (ip && this.agentLimiter) {
+      const r = this.agentLimiter.tryConnect(ip);
+      if (!r.allowed) {
+        send(ws, {
+          v: PROTOCOL_VERSION,
+          type: 'error',
+          payload: { code: 'rate_limited', message: r.reason ?? 'limite de conexões excedido' },
+        });
+        ws.close();
+        return;
+      }
+      this.agentIpBySocket.set(ws, ip);
+    }
     ws.on('message', (raw: Buffer) => this.onMessage(ws, raw));
     ws.on('close', () => this.onClose(ws));
   }
 
-  attachSpectatorSocket(ws: WebSocket): void {
+  attachSpectatorSocket(ws: WebSocket, ip?: string): void {
+    if (ip && this.spectatorLimiter) {
+      const r = this.spectatorLimiter.tryConnect(ip);
+      if (!r.allowed) {
+        send(ws, { type: 'spectate_idle', message: r.reason ?? 'limite de conexões excedido' });
+        ws.close();
+        return;
+      }
+      ws.on('close', () => this.spectatorLimiter?.release(ip));
+    }
     if (this.latest && !this.latest.finished) this.latest.addSpectator(ws);
     else send(ws, { type: 'spectate_idle', message: 'nenhuma partida em andamento' });
   }
@@ -356,7 +404,10 @@ export class AgentServer {
       send(ws, {
         v: PROTOCOL_VERSION,
         type: 'error',
-        payload: { code: 'version_mismatch', message: `Servidor fala protocolo ${PROTOCOL_VERSION}.` },
+        payload: {
+          code: 'version_mismatch',
+          message: `Servidor fala protocolo ${PROTOCOL_VERSION}.`,
+        },
       });
       return;
     }
@@ -420,6 +471,11 @@ export class AgentServer {
     this.bySocket.get(ws)?.detach(ws);
     this.bySocket.delete(ws);
     this.invalidCount.delete(ws);
+    const ip = this.agentIpBySocket.get(ws);
+    if (ip) {
+      this.agentLimiter?.release(ip);
+      this.agentIpBySocket.delete(ws);
+    }
   }
 }
 
