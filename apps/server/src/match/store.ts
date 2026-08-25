@@ -38,12 +38,21 @@ export interface MatchResult {
 export interface StandingRow {
   agent: string;
   points: number;
+  /** Rating Elo (K=32, inicial 1000), atualizado partida a partida. */
+  elo: number;
   wins: number;
   draws: number;
   losses: number;
   matches: number;
   fragmentsDelivered: number;
   noKillWins: number;
+}
+
+const ELO_K = 32;
+const ELO_START = 1000;
+
+function eloExpected(a: number, b: number): number {
+  return 1 / (1 + Math.pow(10, (b - a) / 400));
 }
 
 /** Pontuação por partida (docs/07-campeonato.md). */
@@ -138,6 +147,7 @@ export class MatchStore {
         rows.set(agent, {
           agent,
           points: 0,
+          elo: ELO_START,
           wins: 0,
           draws: 0,
           losses: 0,
@@ -149,6 +159,15 @@ export class MatchStore {
       return rows.get(agent)!;
     };
     for (const r of this.listResults()) {
+      // Elo: atualizado na ordem cronológica dos resultados.
+      const rowC = get(r.agents.cian);
+      const rowM = get(r.agents.magenta);
+      const scoreC = r.winner === 'cian' ? 1 : r.winner === 'draw' ? 0.5 : 0;
+      const expC = eloExpected(rowC.elo, rowM.elo);
+      const deltaC = ELO_K * (scoreC - expC);
+      rowC.elo = Math.round((rowC.elo + deltaC) * 10) / 10;
+      rowM.elo = Math.round((rowM.elo - deltaC) * 10) / 10;
+
       for (const team of ['cian', 'magenta'] as const) {
         const row = get(r.agents[team]);
         row.matches += 1;
@@ -161,6 +180,6 @@ export class MatchStore {
         else row.losses += 1;
       }
     }
-    return [...rows.values()].sort((a, b) => b.points - a.points || b.wins - a.wins);
+    return [...rows.values()].sort((a, b) => b.points - a.points || b.elo - a.elo || b.wins - a.wins);
   }
 }
