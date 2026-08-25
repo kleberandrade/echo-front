@@ -120,7 +120,8 @@ function soundFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig):
     const dist = distanceUnits(unit.x, unit.y, sx, sy);
     if (dist > sc.soundRange) return;
     const crossed = obstaclesCrossed(map, unit.x, unit.y, sx, sy);
-    const attenuated = base * (1 - dist / sc.soundRange) * Math.pow(sc.soundObstacleFactor, crossed);
+    const attenuated =
+      base * (1 - dist / sc.soundRange) * Math.pow(sc.soundObstacleFactor, crossed);
     const intensity = Math.round(attenuated * 100) / 100;
     if (intensity < sc.soundMinIntensity) return;
     const stream = deriveStream(state.seed, 'sound', state.cycle, unit.id, sourceKey);
@@ -156,7 +157,12 @@ function soundFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig):
 
 type ThermalReading = { intensity: number; direction: number };
 
-function thermalFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig): ThermalReading[] {
+function thermalFor(
+  unit: Unit,
+  state: MatchState,
+  map: MapDef,
+  cfg: MatchConfig,
+): ThermalReading[] {
   const sc = cfg.sensors;
   const out: ThermalReading[] = [];
 
@@ -295,7 +301,8 @@ export function buildPerception(
       angleDiff(dir, unit.heading) <= stats.visionFov / 2 &&
       hasLineOfSight(map, unit.x, unit.y, frag.x, frag.y);
     const pulsed = state.pulses.some(
-      (p) => p.team === unit.team && distanceUnits(p.x, p.y, frag.x, frag.y) <= cfg.sensors.radarRadius,
+      (p) =>
+        p.team === unit.team && distanceUnits(p.x, p.y, frag.x, frag.y) <= cfg.sensors.radarRadius,
     );
     if (seen || pulsed) {
       known.push({

@@ -95,7 +95,8 @@ export function ghostBot(team: Team): PerceptionBotFn {
     }
 
     // Patrulha devagar (phantom quase inaudível a 0,5).
-    const target = spawns[(Math.floor(cycle / 14) + (unitId.length % spawns.length)) % spawns.length]!;
+    const target =
+      spawns[(Math.floor(cycle / 14) + (unitId.length % spawns.length)) % spawns.length]!;
     return {
       movement: { direction: deg(pos, target), speed: isPhantom ? 0.5 : 0.7 },
       debug: { mode: 'silent_patrol', target },

@@ -39,7 +39,9 @@ const csvPath = arg('csv', '');
 const cyclesArg = Number(arg('cycles', String(DEFAULT_CONFIG.totalCycles)));
 
 const cfg = { ...DEFAULT_CONFIG, totalCycles: cyclesArg };
-const rows: string[] = ['seed,sideA,winner,winnerBot,scoreCian,scoreMagenta,kills,energySpentA,energySpentB,reason'];
+const rows: string[] = [
+  'seed,sideA,winner,winnerBot,scoreCian,scoreMagenta,kills,energySpentA,energySpentB,reason',
+];
 let winsA = 0;
 let winsB = 0;
 let draws = 0;
@@ -76,8 +78,12 @@ for (let i = 0; i < n; i++) {
 
 const pct = (x: number) => ((100 * x) / n).toFixed(1);
 console.log(`ECHO//FRONT batch — ${botA} × ${botB}, n=${n}, ciclos=${cfg.totalCycles}`);
-console.log(`${botA}: ${winsA} (${pct(winsA)}%) | ${botB}: ${winsB} (${pct(winsB)}%) | empates: ${draws} (${pct(draws)}%)`);
-console.log(`vitórias de ${botB} sem destruir unidades: ${noKillWinsB.length}${noKillWinsB.length ? ` (ex.: ${noKillWinsB.slice(0, 5).join(', ')})` : ''}`);
+console.log(
+  `${botA}: ${winsA} (${pct(winsA)}%) | ${botB}: ${winsB} (${pct(winsB)}%) | empates: ${draws} (${pct(draws)}%)`,
+);
+console.log(
+  `vitórias de ${botB} sem destruir unidades: ${noKillWinsB.length}${noKillWinsB.length ? ` (ex.: ${noKillWinsB.slice(0, 5).join(', ')})` : ''}`,
+);
 if (csvPath) {
   writeFileSync(csvPath, rows.join('\n') + '\n');
   console.log(`csv salvo em ${csvPath}`);

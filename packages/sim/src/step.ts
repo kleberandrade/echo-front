@@ -262,7 +262,8 @@ export function step(
   for (const unit of s.units) {
     if (!unit.alive || unit.speed === 0 || unit.hiddenCycles > 0) continue;
     const stats = cfg.classes[unit.class];
-    let effectiveSpeed = unit.energy <= 0 ? Math.min(unit.speed, cfg.exhaustedSpeedCap) : unit.speed;
+    let effectiveSpeed =
+      unit.energy <= 0 ? Math.min(unit.speed, cfg.exhaustedSpeedCap) : unit.speed;
     let maxPerTick = stats.maxSpeedPerTick;
     if (unit.boosting) maxPerTick = Math.round((maxPerTick * cfg.actions.boostFactor) / 1000);
     if (unit.carryingFragment)
@@ -281,7 +282,7 @@ export function step(
       ty = ny;
     }
 
-    const minD2 = (2 * cfg.unitRadius) * (2 * cfg.unitRadius);
+    const minD2 = 2 * cfg.unitRadius * (2 * cfg.unitRadius);
     const collides = s.units.some(
       (o) => o.id !== unit.id && o.alive && dist2(tx, ty, o.x, o.y) < minD2,
     );
@@ -416,7 +417,9 @@ function objectiveTick(s: MatchState, map: MapDef, cfg: MatchConfig): void {
       const carrier = s.units.find((u) => u.id === frag.carrier);
       if (!carrier || !carrier.alive) continue;
       const core = map.cores[carrier.team];
-      if (distanceUnits(carrier.x, carrier.y, toFixed(core.x), toFixed(core.y)) <= fc.captureRadius) {
+      if (
+        distanceUnits(carrier.x, carrier.y, toFixed(core.x), toFixed(core.y)) <= fc.captureRadius
+      ) {
         frag.state = 'delivered';
         frag.carrier = undefined;
         carrier.carryingFragment = false;

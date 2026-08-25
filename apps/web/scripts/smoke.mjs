@@ -63,7 +63,9 @@ try {
   await page.screenshot({ path: 'screenshots/replay-team-view.png' });
 
   await browser.close();
-  console.log('SMOKE OK — placar final renderizado, hash verificado no browser, screenshots salvos');
+  console.log(
+    'SMOKE OK — placar final renderizado, hash verificado no browser, screenshots salvos',
+  );
 } finally {
   server.kill();
 }

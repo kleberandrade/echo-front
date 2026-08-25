@@ -51,8 +51,12 @@ describe('sensor térmico', () => {
   it('rastro de calor persiste depois que a unidade passou', () => {
     let s = apart();
     // Runner magenta atravessa correndo…
-    s = stepCycle(s, { magenta_runner_1: { movement: { direction: 90, speed: 1 } } }, map, cfg)
-      .state;
+    s = stepCycle(
+      s,
+      { magenta_runner_1: { movement: { direction: 90, speed: 1 } } },
+      map,
+      cfg,
+    ).state;
     const trailCountMoving = s.heatTrails.length;
     expect(trailCountMoving).toBeGreaterThan(0);
     // …para; o rastro decai mas ainda existe por alguns ciclos.

@@ -8,11 +8,23 @@ import type { DecisionPayload } from '@echo-front/protocol';
 import { DEFAULT_CONFIG, type MatchState, type Unit } from '@echo-front/sim';
 
 const CFG = DEFAULT_CONFIG;
-const CUT = { clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))' };
+const CUT = {
+  clipPath:
+    'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+};
 
-export function Panel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+export function Panel({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className={`border border-slate-700/60 bg-[#060a12]/90 backdrop-blur-sm ${className}`} style={CUT}>
+    <div
+      className={`border border-slate-700/60 bg-[#060a12]/90 backdrop-blur-sm ${className}`}
+      style={CUT}
+    >
       {children}
     </div>
   );
@@ -27,7 +39,10 @@ export function SegBar({ value, max, color }: { value: number; max: number; colo
         <span
           key={i}
           className="h-[7px] w-[16px]"
-          style={{ background: i < filled ? color : '#1b2635', boxShadow: i < filled ? `0 0 6px ${color}66` : 'none' }}
+          style={{
+            background: i < filled ? color : '#1b2635',
+            boxShadow: i < filled ? `0 0 6px ${color}66` : 'none',
+          }}
         />
       ))}
       <span className="ml-2 text-[10px] text-slate-400">
@@ -41,7 +56,13 @@ export function UnitCard({ unit, decision }: { unit: Unit; decision?: DecisionPa
   const stats = CFG.classes[unit.class];
   const teamColor = unit.team === 'cian' ? '#22d3ee' : '#e64ce6';
   const speedLabel =
-    unit.speed === 0 ? 'PARADO' : unit.speed > 700 ? 'MUITO ALTA' : unit.speed > 400 ? 'ALTA' : 'BAIXA';
+    unit.speed === 0
+      ? 'PARADO'
+      : unit.speed > 700
+        ? 'MUITO ALTA'
+        : unit.speed > 400
+          ? 'ALTA'
+          : 'BAIXA';
   return (
     <Panel className="w-64 p-4 text-[11px]">
       <p className="mb-3 text-sm font-bold tracking-[0.25em]" style={{ color: teamColor }}>
@@ -59,7 +80,13 @@ export function UnitCard({ unit, decision }: { unit: Unit; decision?: DecisionPa
         <div className="flex items-center justify-between">
           <span className="tracking-widest text-slate-500">SIGNATURE</span>
           <span style={{ color: teamColor }}>
-            {unit.hiddenCycles > 0 ? 'NONE' : unit.speed > 700 ? 'HIGH' : unit.speed > 0 ? 'MEDIUM' : 'LOW'}
+            {unit.hiddenCycles > 0
+              ? 'NONE'
+              : unit.speed > 700
+                ? 'HIGH'
+                : unit.speed > 0
+                  ? 'MEDIUM'
+                  : 'LOW'}
           </span>
         </div>
         <div className="flex items-center justify-between">
@@ -78,17 +105,24 @@ export function UnitCard({ unit, decision }: { unit: Unit; decision?: DecisionPa
           <div className="mt-2 border-t border-slate-800 pt-2">
             <p className="mb-1 tracking-widest text-slate-500">DECISÃO DA IA</p>
             <p className="text-emerald-300/90">
-              {String((decision.debug as Record<string, unknown>).mode ?? decision.action ?? 'mover')}
+              {String(
+                (decision.debug as Record<string, unknown>).mode ?? decision.action ?? 'mover',
+              )}
             </p>
             {Object.entries(decision.debug as Record<string, unknown>)
               .filter(([k, v]) => k !== 'mode' && (typeof v === 'number' || typeof v === 'string'))
               .slice(0, 3)
               .map(([k, v]) => (
                 <p key={k} className="text-slate-400">
-                  {k}: <span className="text-slate-200">{typeof v === 'number' ? v.toFixed(2) : String(v)}</span>
+                  {k}:{' '}
+                  <span className="text-slate-200">
+                    {typeof v === 'number' ? v.toFixed(2) : String(v)}
+                  </span>
                 </p>
               ))}
-            {decision.message_to_team && <p className="text-slate-400">✉ {decision.message_to_team}</p>}
+            {decision.message_to_team && (
+              <p className="text-slate-400">✉ {decision.message_to_team}</p>
+            )}
           </div>
         )}
       </div>
@@ -113,7 +147,11 @@ export function ActionBar({ unit, decision }: { unit?: Unit; decision?: Decision
           <div key={a.key} className="flex flex-col items-center gap-1">
             <div
               className={`flex h-16 w-16 flex-col items-center justify-center border text-center ${
-                active ? 'border-cyan-300 bg-cyan-400/15' : cd > 0 ? 'border-slate-800 bg-black/60 opacity-50' : 'border-slate-700 bg-black/60'
+                active
+                  ? 'border-cyan-300 bg-cyan-400/15'
+                  : cd > 0
+                    ? 'border-slate-800 bg-black/60 opacity-50'
+                    : 'border-slate-700 bg-black/60'
               }`}
               style={CUT}
             >
@@ -121,7 +159,9 @@ export function ActionBar({ unit, decision }: { unit?: Unit; decision?: Decision
               <span className="mt-1 px-1 text-[7px] tracking-widest text-slate-400">{a.label}</span>
               {cd > 0 && <span className="text-[9px] text-amber">{cd}</span>}
             </div>
-            <span className="border border-slate-800 px-[6px] text-[9px] text-slate-500">{i + 1}</span>
+            <span className="border border-slate-800 px-[6px] text-[9px] text-slate-500">
+              {i + 1}
+            </span>
           </div>
         );
       })}
@@ -160,15 +200,28 @@ export function fmtClock(cyclesLeft: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
-export function ScorePips({ score, color, flip = false }: { score: number; color: string; flip?: boolean }) {
+export function ScorePips({
+  score,
+  color,
+  flip = false,
+}: {
+  score: number;
+  color: string;
+  flip?: boolean;
+}) {
   const pips = Array.from({ length: CFG.fragments.deliveriesToWin }, (_, i) => (
     <span
       key={i}
       className="inline-block h-2 w-2 rounded-full"
-      style={{ background: i < score ? color : '#1b2635', boxShadow: i < score ? `0 0 6px ${color}` : 'none' }}
+      style={{
+        background: i < score ? color : '#1b2635',
+        boxShadow: i < score ? `0 0 6px ${color}` : 'none',
+      }}
     />
   ));
-  return <span className={`flex items-center gap-1 ${flip ? 'flex-row-reverse' : ''}`}>{pips}</span>;
+  return (
+    <span className={`flex items-center gap-1 ${flip ? 'flex-row-reverse' : ''}`}>{pips}</span>
+  );
 }
 
 export type { MatchState };

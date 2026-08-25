@@ -72,7 +72,9 @@ export class Agent {
   }
 
   sendDecision(unitId: string, cycle: number, payload: DecisionPayload): void {
-    this.ws?.send(JSON.stringify({ v: PROTOCOL_VERSION, type: 'decision', unitId, cycle, payload }));
+    this.ws?.send(
+      JSON.stringify({ v: PROTOCOL_VERSION, type: 'decision', unitId, cycle, payload }),
+    );
   }
 
   close(): void {
