@@ -44,6 +44,22 @@ docker build -t "$AGENT_IMAGE" apps/server/docker/sandbox-agent
 echo "==> subindo o orquestrador na rede $NETWORK (porta 3001 publicada só pra você observar)"
 docker run -d --name "$ORCH_NAME" --network "$NETWORK" -p 3001:3001 "$SERVER_IMAGE"
 
+# Se a porta 3001 do host já estiver ocupada por outra coisa (ex.: um
+# `./scripts/start.sh` / `pnpm dev` esquecido rodando em outro terminal — o
+# server de dev local usa a mesma porta 3001), o Docker/OrbStack pode NÃO
+# publicar a porta e mesmo assim deixar o container de pé sem erro. Nesse
+# caso, todo `curl localhost:3001` daqui pra baixo bateria no processo
+# ERRADO (o outro servidor, com dados vazios) em vez do container — e o
+# diagnóstico ficaria muito confuso (visto na prática: série completa nos
+# logs do container, mas `/api/matches` do host sempre vazio). Falha cedo e
+# com uma mensagem clara em vez de deixar isso passar batido.
+mapped="$(docker port "$ORCH_NAME" 3001/tcp 2>/dev/null || true)"
+if [ -z "$mapped" ]; then
+  echo "erro: a porta 3001 do container não foi publicada pro host — provavelmente a porta 3001 já está em uso por outro processo (ex.: um './scripts/start.sh' ou 'pnpm dev' esquecido rodando)." >&2
+  echo "   verifique com 'lsof -nP -iTCP:3001 -sTCP:LISTEN' e pare o que estiver usando a porta antes de rodar de novo." >&2
+  exit 1
+fi
+
 echo "==> aguardando o orquestrador responder /health…"
 for i in $(seq 1 20); do
   curl -sf http://localhost:3001/health >/dev/null 2>&1 && break
