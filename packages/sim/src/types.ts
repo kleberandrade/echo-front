@@ -33,6 +33,8 @@ export interface SensorConfig {
   thermalObstacleFactor: number;
   /** Ciclos que um rastro de calor persiste onde a unidade passou. */
   heatTrailCycles: number;
+  /** silent_hunt: máximo de pulse_scan por unidade na partida (0 = ilimitado). */
+  maxPulsesPerMatch: number;
 }
 
 export interface ActionsConfig {
@@ -52,6 +54,15 @@ export interface ActionsConfig {
   strikeNoise: number;
 }
 
+export interface CoreSiegeConfig {
+  /** Integridade do núcleo. */
+  coreIntegrity: number;
+  /** Dano do strike contra o núcleo. */
+  strikeDamageToCore: number;
+  /** Distância máxima em que o núcleo inimigo aparece na visão. */
+  coreVisionRange: number;
+}
+
 export interface FragmentsConfig {
   deliveriesToWin: number;
   /** Ciclos consecutivos adjacente ao fragmento para capturar. */
@@ -68,10 +79,14 @@ export interface FragmentsConfig {
   spawnEveryCycles: number;
 }
 
+export type GameMode = 'data_run' | 'core_siege' | 'silent_hunt';
+
 export interface MatchConfig {
   ticksPerCycle: number;
   totalCycles: number;
   map: string;
+  /** Modo de disputa (docs/02-game-design.md). */
+  mode: GameMode;
   energyRegenPerCycle: number;
   towerBonusPerCycle: number;
   fastMoveCostPerCycle: number;
@@ -80,6 +95,7 @@ export interface MatchConfig {
   unitRadius: Fixed;
   sensors: SensorConfig;
   actions: ActionsConfig;
+  coreSiege: CoreSiegeConfig;
   fragments: FragmentsConfig;
   classes: Record<UnitClass, ClassStats>;
   /** Composição de cada time, em ordem de spawn (máx. = spawns do mapa). */
@@ -90,6 +106,7 @@ export const DEFAULT_CONFIG: MatchConfig = {
   ticksPerCycle: 5,
   totalCycles: 180,
   map: 'arena_alpha@1',
+  mode: 'data_run',
   energyRegenPerCycle: 2,
   towerBonusPerCycle: 4,
   fastMoveCostPerCycle: 1,
@@ -109,6 +126,7 @@ export const DEFAULT_CONFIG: MatchConfig = {
     thermalMinIntensity: 0.05,
     thermalObstacleFactor: 0.5,
     heatTrailCycles: 3,
+    maxPulsesPerMatch: 0,
   },
   actions: {
     decoyCost: 20,
@@ -123,6 +141,11 @@ export const DEFAULT_CONFIG: MatchConfig = {
     strikeDamage: 20,
     strikeRange: 3,
     strikeNoise: 0.9,
+  },
+  coreSiege: {
+    coreIntegrity: 100,
+    strikeDamageToCore: 20,
+    coreVisionRange: 10,
   },
   composition: {
     cian: ['observer', 'runner'],
@@ -170,6 +193,8 @@ export interface Unit {
   energySpent: number;
   /** Último quadro de aliados conhecido (atualizado fora de interferência). */
   lastAllies: AllySnapshot[];
+  /** silent_hunt: pulsos já disparados nesta partida. */
+  pulsesUsed: number;
 }
 
 /** Mensagem de time em trânsito (enviada no ciclo `cycle`, entregue no seguinte). */
@@ -237,6 +262,7 @@ export interface HeatTrail {
 
 export interface MatchState {
   simVersion: string;
+  mode: GameMode;
   cycle: number;
   tick: number; // tick global desde o início
   seed: string;
@@ -250,9 +276,13 @@ export interface MatchState {
   pulses: RadarPulse[];
   /** Eventos globais do ciclo corrente (limpos no início de cada ciclo). */
   cycleEvents: string[];
+  /** Posições dos núcleos (em core_siege, sorteadas por semente). */
+  corePositions: { cian: { x: Fixed; y: Fixed }; magenta: { x: Fixed; y: Fixed } };
+  /** Integridade dos núcleos (usada em core_siege; cheia nos demais modos). */
+  coreIntegrity: { cian: number; magenta: number };
   score: { cian: number; magenta: number };
   ended: boolean;
-  endReason?: 'time_up' | 'fragments_delivered';
+  endReason?: 'time_up' | 'fragments_delivered' | 'core_destroyed';
 }
 
 /** Decisões do ciclo, por unitId. */

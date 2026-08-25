@@ -14,11 +14,11 @@ import { replayFromJsonl, resimulate } from './match.js';
 const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures');
 
 const GOLDEN = [
-  // Regeneradas em 2026-08-25 (Sprint 7): unidades ganharam lastAllies
-  // (snapshot de aliados para interferência) — mudança intencional.
-  { file: 'golden-alpha.replay.jsonl', hash: 'f813111521f84252', cycles: 60 },
-  { file: 'golden-beta.replay.jsonl', hash: '796156d102104588', cycles: 90 },
-  { file: 'golden-gamma.replay.jsonl', hash: 'a8af2c765bc50a1f', cycles: 180 },
+  // Regeneradas em 2026-08-25 (Sprint 8): estado ganhou mode/corePositions/
+  // coreIntegrity/pulsesUsed (modos core_siege e silent_hunt).
+  { file: 'golden-alpha.replay.jsonl', hash: '1495d149aaf28f38', cycles: 60 },
+  { file: 'golden-beta.replay.jsonl', hash: '7efc7de94a5688de', cycles: 90 },
+  { file: 'golden-gamma.replay.jsonl', hash: '3e41530efeb9e3bd', cycles: 180 },
 ];
 
 describe('golden replays', () => {

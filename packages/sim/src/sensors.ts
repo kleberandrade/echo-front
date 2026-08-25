@@ -91,6 +91,23 @@ function visualFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig)
     });
   }
 
+  // core_siege: o núcleo inimigo só aparece a curta distância (o "localizar").
+  if (state.mode === 'core_siege') {
+    const enemyTeam = unit.team === 'cian' ? 'magenta' : 'cian';
+    const core = state.corePositions[enemyTeam];
+    if (state.coreIntegrity[enemyTeam] > 0) {
+      const hit = see(core.x, core.y);
+      if (hit && hit.dist <= cfg.coreSiege.coreVisionRange) {
+        out.push({
+          type: 'core',
+          direction: hit.dir,
+          distance: Math.round(hit.dist * 10) / 10,
+          confidence: 0.95,
+        });
+      }
+    }
+  }
+
   // Fragmentos no chão são visíveis.
   for (const frag of state.fragments) {
     if (frag.state !== 'spawned' && frag.state !== 'dropped') continue;
@@ -208,7 +225,7 @@ function radarFor(unit: Unit, state: MatchState, cfg: MatchConfig): RadarReading
   const out: RadarReading[] = [];
   for (const pulse of state.pulses) {
     if (pulse.team === unit.team) {
-      const echo = (tx: Fixed, ty: Fixed, type: 'unit' | 'fragment'): void => {
+      const echo = (tx: Fixed, ty: Fixed, type: 'unit' | 'fragment' | 'core'): void => {
         if (distanceUnits(pulse.x, pulse.y, tx, ty) > sc.radarRadius) return;
         out.push({
           type,
@@ -229,6 +246,12 @@ function radarFor(unit: Unit, state: MatchState, cfg: MatchConfig): RadarReading
       for (const frag of state.fragments) {
         if (frag.state !== 'spawned' && frag.state !== 'dropped') continue;
         echo(frag.x, frag.y, 'fragment');
+      }
+      if (state.mode === 'core_siege') {
+        const enemyTeam = unit.team === 'cian' ? 'magenta' : 'cian';
+        if (state.coreIntegrity[enemyTeam] > 0) {
+          echo(state.corePositions[enemyTeam].x, state.corePositions[enemyTeam].y, 'core');
+        }
       }
     } else {
       const dist = distanceUnits(unit.x, unit.y, pulse.x, pulse.y);
@@ -337,7 +360,7 @@ export function buildPerception(
     team_messages,
     events,
     objective: {
-      mode: 'data_run',
+      mode: state.mode,
       score: { ...state.score },
       time_remaining_cycles: Math.max(0, cfg.totalCycles - state.cycle),
       known_fragments: known,

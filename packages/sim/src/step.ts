@@ -15,7 +15,7 @@ import {
   type Unit,
 } from './types.js';
 
-export const SIM_VERSION = '0.5.0';
+export const SIM_VERSION = '0.6.0';
 
 // ---------------------------------------------------------------------------
 // Estado inicial
@@ -51,13 +51,23 @@ export function createMatch(
         boosting: false,
         energySpent: 0,
         lastAllies: [],
+        pulsesUsed: 0,
       });
     });
   }
   units.sort((a, b) => (a.id < b.id ? -1 : 1));
 
+  // Núcleos: fixos em data_run/silent_hunt; sorteados por semente em core_siege
+  // (o "localizar" do modo — o adversário não sabe qual par foi escolhido).
+  let site = map.cores !== undefined ? { cian: map.cores.cian, magenta: map.cores.magenta } : map.coreSites[0]!;
+  if (cfg.mode === 'core_siege' && map.coreSites.length > 0) {
+    const pick = nextInt(deriveStream(seed, 'core_site'), map.coreSites.length).value;
+    site = map.coreSites[pick]!;
+  }
+
   return {
     simVersion: SIM_VERSION,
+    mode: cfg.mode,
     cycle: 0,
     tick: 0,
     seed,
@@ -70,6 +80,11 @@ export function createMatch(
     messages: [],
     pulses: [],
     cycleEvents: ['match_start'],
+    corePositions: {
+      cian: { x: toFixed(site.cian.x), y: toFixed(site.cian.y) },
+      magenta: { x: toFixed(site.magenta.x), y: toFixed(site.magenta.y) },
+    },
+    coreIntegrity: { cian: cfg.coreSiege.coreIntegrity, magenta: cfg.coreSiege.coreIntegrity },
     score: { cian: 0, magenta: 0 },
     ended: false,
   };
@@ -167,7 +182,10 @@ export function step(
         case 'pulse_scan': {
           const cost =
             unit.class === 'observer' ? cfg.sensors.radarCostObserver : cfg.sensors.radarCost;
+          const limit = cfg.sensors.maxPulsesPerMatch;
+          if (limit > 0 && unit.pulsesUsed >= limit) break; // silent_hunt: acabou a cota
           if ((unit.cooldowns['pulse_scan'] ?? 0) === 0 && unit.energy >= cost) {
+            unit.pulsesUsed += 1;
             spend(unit, cost);
             unit.cooldowns['pulse_scan'] = cfg.sensors.radarCooldownCycles;
             unit.hiddenCycles = 0;
@@ -232,6 +250,27 @@ export function step(
               if (dist < bestDist) {
                 best = enemy;
                 bestDist = dist;
+              }
+            }
+            // core_siege: o núcleo inimigo é alvo válido (prioridade pela mira).
+            if (s.mode === 'core_siege') {
+              const enemyTeam = unit.team === 'cian' ? 'magenta' : 'cian';
+              const core = s.corePositions[enemyTeam];
+              if (
+                s.coreIntegrity[enemyTeam] > 0 &&
+                distanceUnits(unit.x, unit.y, core.x, core.y) <= ac.strikeRange &&
+                distanceUnits(aimX, aimY, core.x, core.y) < bestDist
+              ) {
+                spend(unit, ac.strikeCost);
+                unit.cooldowns['strike'] = 1;
+                unit.hiddenCycles = 0;
+                s.coreIntegrity[enemyTeam] = Math.max(
+                  0,
+                  s.coreIntegrity[enemyTeam] - cfg.coreSiege.strikeDamageToCore,
+                );
+                s.noises.push({ x: unit.x, y: unit.y, intensity: ac.strikeNoise });
+                s.cycleEvents.push(`core_hit:${enemyTeam}`);
+                break;
               }
             }
             if (best) {
@@ -377,7 +416,12 @@ export function step(
   s.tick += 1;
   if (s.tick % cfg.ticksPerCycle === 0) {
     s.cycle += 1;
-    if (
+    if (s.mode === 'core_siege' && (s.coreIntegrity.cian === 0 || s.coreIntegrity.magenta === 0)) {
+      s.ended = true;
+      s.endReason = 'core_destroyed';
+      events.push('match_end:core_destroyed');
+      s.cycleEvents.push('match_end:core_destroyed');
+    } else if (
       s.score.cian >= cfg.fragments.deliveriesToWin ||
       s.score.magenta >= cfg.fragments.deliveriesToWin
     ) {
@@ -401,6 +445,7 @@ export function step(
 // ---------------------------------------------------------------------------
 
 function spawnFragments(s: MatchState, map: MapDef, cfg: MatchConfig): void {
+  if (s.mode === 'core_siege') return; // sem fragmentos no cerco
   const fc = cfg.fragments;
   if (s.cycle % fc.spawnEveryCycles !== 0) return;
   const active = s.fragments.filter((f) => f.state !== 'delivered').length;
@@ -436,8 +481,8 @@ function objectiveTick(s: MatchState, map: MapDef, cfg: MatchConfig): void {
       // Entrega: portador tocando o próprio núcleo.
       const carrier = s.units.find((u) => u.id === frag.carrier);
       if (!carrier || !carrier.alive) continue;
-      const core = map.cores[carrier.team];
-      if (distanceUnits(carrier.x, carrier.y, toFixed(core.x), toFixed(core.y)) <= fc.captureRadius) {
+      const core = s.corePositions[carrier.team];
+      if (distanceUnits(carrier.x, carrier.y, core.x, core.y) <= fc.captureRadius) {
         frag.state = 'delivered';
         frag.carrier = undefined;
         carrier.carryingFragment = false;
@@ -490,6 +535,10 @@ function objectiveTick(s: MatchState, map: MapDef, cfg: MatchConfig): void {
 // ---------------------------------------------------------------------------
 
 export function decideWinner(s: MatchState): 'cian' | 'magenta' | 'draw' {
+  // core_siege: quem preserva mais o próprio núcleo vence.
+  if (s.mode === 'core_siege' && s.coreIntegrity.cian !== s.coreIntegrity.magenta) {
+    return s.coreIntegrity.cian > s.coreIntegrity.magenta ? 'cian' : 'magenta';
+  }
   if (s.score.cian !== s.score.magenta) {
     return s.score.cian > s.score.magenta ? 'cian' : 'magenta';
   }

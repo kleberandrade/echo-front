@@ -24,6 +24,8 @@ export interface MapDef {
   /** Pontos possíveis de spawn de fragmento (Sprint 3). */
   fragmentSpawns: { x: number; y: number }[];
   cores: { cian: { x: number; y: number }; magenta: { x: number; y: number } };
+  /** Pares espelhados candidatos a posição de núcleo (core_siege sorteia um). */
+  coreSites: { cian: { x: number; y: number }; magenta: { x: number; y: number } }[];
   /** Spawns de unidade por time, em ordem de unitId. */
   unitSpawns: { cian: { x: number; y: number }[]; magenta: { x: number; y: number }[] };
 }
@@ -66,6 +68,11 @@ export const ARENA_ALPHA: MapDef = {
     { x: 51, y: 5 },
   ],
   cores: { cian: { x: 6, y: 18 }, magenta: { x: 57, y: 17 } },
+  coreSites: [
+    { cian: { x: 6, y: 18 }, magenta: { x: 57, y: 17 } },
+    { cian: { x: 10, y: 6 }, magenta: { x: 53, y: 29 } },
+    { cian: { x: 8, y: 30 }, magenta: { x: 55, y: 5 } },
+  ],
   unitSpawns: {
     cian: [
       { x: 5, y: 16 },
