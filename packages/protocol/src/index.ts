@@ -4,7 +4,7 @@ import { z } from 'zod';
  * ECHO//FRONT — protocolo agente ↔ servidor.
  * Referência humana: docs/04-protocolo-agente.md
  */
-export const PROTOCOL_VERSION = '0.1.0';
+export const PROTOCOL_VERSION = '0.2.0';
 
 // ---------------------------------------------------------------------------
 // Primitivas
@@ -180,6 +180,10 @@ export const WelcomePayloadSchema = z.object({
   /** Hash da semente; o valor real é publicado após a partida. */
   seedPublic: z.string(),
   map: z.string(),
+  /** Presente em partidas ranqueadas: posição desta partida na série. */
+  series: z
+    .object({ seriesId: z.string(), game: z.number().int().min(1), of: z.number().int().min(1) })
+    .optional(),
 });
 export type WelcomePayload = z.infer<typeof WelcomePayloadSchema>;
 
