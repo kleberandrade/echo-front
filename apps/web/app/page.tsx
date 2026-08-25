@@ -17,17 +17,17 @@ export default function Home() {
 
       <div className="flex flex-wrap items-center justify-center gap-4 font-mono text-sm">
         <Link
-          href="/watch/demo"
+          href="/replay/demo"
           className="border border-cyan-400/40 bg-cyan-400/10 px-6 py-3 tracking-widest text-cian transition hover:bg-cyan-400/20"
         >
-          ▶ ASSISTIR DEMO
+          ▶ ASSISTIR REPLAY DEMO
         </Link>
-        <a
-          href="https://github.com"
-          className="border border-slate-700 px-6 py-3 tracking-widest text-slate-400 transition hover:border-slate-500 hover:text-slate-200"
+        <Link
+          href="/watch/demo"
+          className="border border-fuchsia-400/40 bg-fuchsia-400/10 px-6 py-3 tracking-widest text-magenta transition hover:bg-fuchsia-400/20"
         >
-          PROTOCOLO v0.1
-        </a>
+          ⦿ AO VIVO
+        </Link>
       </div>
 
       <div className="mt-8 grid w-full grid-cols-1 gap-4 text-left font-mono text-xs sm:grid-cols-3">

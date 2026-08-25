@@ -43,7 +43,7 @@ Sensores, ações especiais, fragmentos, rede.
 
 ## Débitos / Retro
 
-- **Débito:** teste de paridade Node×browser (Playwright carregando o sim numa página e comparando `finalHash`) — planejado para a Sprint 4, quando o Playwright entra no `apps/web` de qualquer forma. Mitigação atual: aritmética 100% inteira (fixed-point + tabelas trig quantizadas ×32768), sem floats acumulados.
+- **Débito — ✅ quitado na Sprint 4:** paridade Node×browser comprovada — o replay demo re-simulado no Chromium (smoke Playwright) verifica o mesmo `finalHash` gerado no Node. Mitigação que garantiu isso: aritmética 100% inteira (fixed-point + tabelas trig quantizadas ×32768), sem floats acumulados.
 - **Débito:** teste de estresse usa 50 partidas (não 1000) na suíte padrão para manter o CI rápido; rodar 1000 localmente via loop do CLI quando houver mudança de física.
 - **Nota:** stats das 6 classes já entraram no `MatchConfig` (velocidade/energia/integridade) para não retrabalhar na Sprint 3; apenas observer/runner são instanciadas.
 - **Retro:** a decisão de gerar o mapa espelhado por construção (metade declarada + espelho automático) eliminou toda uma classe de erros de simetria — o validador nunca falhou com dados reais.
