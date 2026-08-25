@@ -35,7 +35,19 @@ npx wscat -c ws://localhost:3001/agent
 
 ## Deploy
 
-- **Vercel (apps/web):** Root Directory = `apps/web`, framework Next.js. Build roda pelo pipeline do monorepo (Vercel detecta pnpm + turbo automaticamente).
+**Vercel publica só `apps/web`.** O `package.json` da raiz não tem `next` — se o Root Directory ficar no repo, o build quebra com _No Next.js version detected_.
+
+No projeto Vercel → **Settings → General / Build and Deployment**:
+
+| Setting                                  | Valor      |
+| ---------------------------------------- | ---------- |
+| Framework Preset                         | Next.js    |
+| Root Directory                           | `apps/web` |
+| Include files outside the root directory | ligado     |
+| Node.js Version                          | 22.x       |
+
+Depois: **Deployments → ⋯ no deploy falho → Redeploy**.
+
 - **Server:** Railway/Fly/Render (WebSocket persistente — fora do Vercel). Ver [docs/03-arquitetura.md](./docs/03-arquitetura.md).
 
 ## Convenções
