@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+
+:root {
+  --cian: #22d3ee;
+  --magenta: #e64ce6;
+  --amber: #f5b942;
+  --bg: #07090d;
+  --panel: #0d1117;
+}
+
+body {
+  background: var(--bg);
+  color: #d7e2ea;
+}
+
+.text-cian {
+  color: var(--cian);
+}
+.text-magenta {
+  color: var(--magenta);
+}
+.text-amber {
+  color: var(--amber);
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(34, 211, 238, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
