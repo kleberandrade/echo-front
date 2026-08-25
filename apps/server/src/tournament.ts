@@ -15,7 +15,13 @@ import {
   tricksterBot,
   type PerceptionBotFn,
 } from '@echo-front/agents-sdk';
-import { DEFAULT_CONFIG, replayFromJsonl, resimulate, type GameMode, type MatchConfig } from '@echo-front/sim';
+import {
+  DEFAULT_CONFIG,
+  replayFromJsonl,
+  resimulate,
+  type GameMode,
+  type MatchConfig,
+} from '@echo-front/sim';
 import { AgentServer } from './match/agent-server.js';
 
 function arg(name: string, fallback: string): string {
@@ -27,6 +33,12 @@ const GAMES = Number(arg('games', '6'));
 const CYCLE_MS = Number(arg('cycleMs', '25'));
 const OUT = arg('out', join(process.cwd(), '..', 'web', 'public'));
 const DATA_DIR = arg('data', 'data-tournament');
+// Sprint 12: rótulo de temporada, opcional. results.jsonl em DATA_DIR é
+// append-only entre execuções — sem --season, standings() soma tudo que já
+// rodou ali (é assim que o Elo persiste); com --season, dá pra isolar uma
+// rodada específica (ex.: depois de mudar o código de um bot) sem apagar
+// o histórico anterior nem trocar de dataDir.
+const SEASON = arg('season', '');
 
 const ROSTER: Record<string, (team: 'cian' | 'magenta') => PerceptionBotFn> = {
   courier: (t) => courierBot(t),
@@ -40,7 +52,11 @@ const MODES = arg('modes', 'data_run,core_siege,silent_hunt').split(',') as Game
 function cfgFor(mode: GameMode): MatchConfig {
   if (mode === 'core_siege') return { ...DEFAULT_CONFIG, mode };
   if (mode === 'silent_hunt')
-    return { ...DEFAULT_CONFIG, mode, sensors: { ...DEFAULT_CONFIG.sensors, maxPulsesPerMatch: 2 } };
+    return {
+      ...DEFAULT_CONFIG,
+      mode,
+      sensors: { ...DEFAULT_CONFIG.sensors, maxPulsesPerMatch: 2 },
+    };
   return { ...DEFAULT_CONFIG, mode: 'data_run' };
 }
 
@@ -52,6 +68,7 @@ server.configure({
   seriesGames: GAMES,
   interGameMs: 60,
   seedFor: (sid, k) => `friendly-${sid}-${k}`,
+  season: SEASON,
 });
 
 const wss = new WebSocketServer({ port: 0, path: '/agent' });
@@ -116,9 +133,15 @@ for (const r of results) {
   }
 }
 
+// Classificação sempre soma o histórico inteiro do dataDir (é assim que o
+// Elo persiste entre execuções); SEASON só rotula os resultados desta
+// rodada, não filtra o que já foi jogado antes.
 const standings = store.standings();
 const elapsed = ((performance.now() - started) / 1000).toFixed(1);
-console.log(`\n=== TORNEIO AMISTOSO: ${results.length} partidas em ${elapsed}s, divergências: ${divergences} ===`);
+const label = SEASON ? ` (temporada: ${SEASON})` : '';
+console.log(
+  `\n=== TORNEIO AMISTOSO${label}: ${results.length} partidas em ${elapsed}s, divergências: ${divergences} ===`,
+);
 for (const [i, s] of standings.entries()) {
   console.log(
     `${i + 1}. ${s.agent.padEnd(12)} ${String(s.points).padStart(6)} pts · ${s.wins}V ${s.draws}E ${s.losses}D · ${s.fragmentsDelivered} frags · ${s.noKillWins} vitórias sem abate`,
@@ -140,6 +163,9 @@ writeFileSync(
   JSON.stringify({ generatedAt: new Date().toISOString(), matches: results }, null, 2),
 );
 for (const id of store.listReplayIds()) {
-  cpSync(join(DATA_DIR, 'replays', `${id}.replay.jsonl`), join(OUT, 'replays', `${id}.replay.jsonl`));
+  cpSync(
+    join(DATA_DIR, 'replays', `${id}.replay.jsonl`),
+    join(OUT, 'replays', `${id}.replay.jsonl`),
+  );
 }
 console.log(`export: ${OUT}/data/{standings,matches}.json + ${results.length} replays`);

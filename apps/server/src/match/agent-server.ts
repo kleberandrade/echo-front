@@ -46,10 +46,22 @@ export interface AgentServerOptions {
   invalidWarnAt: number;
   invalidKickAt: number;
   seedFor: (seriesId: string, seedIndex: number) => string;
+  /** Rótulo de temporada gravado em cada resultado (sprint-12); '' = sem rótulo. */
+  season: string;
   /** Rate limiting por IP no canal de agentes (sprint-11). `null` desativa. */
   agentRateLimit: RateLimiterOptions | null;
   /** Rate limiting por IP no canal de espectador (mais permissivo: leitura pública). */
   spectatorRateLimit: RateLimiterOptions | null;
+  /**
+   * Janela de matchmaking em ms (sprint-12). `0` (padrão) pareia cada
+   * chegada imediatamente com quem já estiver esperando — FIFO de fato,
+   * já que só há espaço pra 1 comparação por vez. Um valor > 0 acumula
+   * quem chega dentro da janela antes de parear, permitindo escolher o
+   * par com Elo mais próximo entre 3+ candidatos — útil quando vários
+   * agentes se conectam perto um do outro no tempo (ex.: início de uma
+   * temporada). Ver `docs/07-campeonato.md`.
+   */
+  matchmakingWindowMs: number;
 }
 
 const DEFAULT_OPTIONS: AgentServerOptions = {
@@ -62,10 +74,14 @@ const DEFAULT_OPTIONS: AgentServerOptions = {
   invalidWarnAt: 3,
   invalidKickAt: 10,
   seedFor: (seriesId, k) => `${seriesId}-seed-${k}`,
+  season: '',
   // Um agente real abre 1 conexão por partida; generoso o bastante para rodar
   // vários bots locais ao mesmo tempo, apertado o bastante para barrar flood.
   agentRateLimit: { maxConnectionsPerMinute: 60, maxConcurrentPerIp: 20 },
   spectatorRateLimit: { maxConnectionsPerMinute: 120, maxConcurrentPerIp: 40 },
+  // Padrão 0 preserva o comportamento anterior (pareia assim que possível);
+  // quem quiser matchmaking por Elo entre vários candidatos liga via configure().
+  matchmakingWindowMs: 0,
 };
 
 interface Seat {
@@ -280,6 +296,7 @@ class Series {
               kills: finalState.units.filter((u) => !u.alive).length,
             },
             finishedAt: new Date().toISOString(),
+            ...(this.opts.season ? { season: this.opts.season } : {}),
           },
           replay,
         );
@@ -301,7 +318,14 @@ class Series {
 export class AgentServer {
   private opts: AgentServerOptions = { ...DEFAULT_OPTIONS };
   store: MatchStore | undefined;
-  private waiting: { ws: WebSocket; name: string } | null = null;
+  /**
+   * Fila de matchmaking (sprint-12): mais de um agente pode ficar esperando
+   * ao mesmo tempo. Com `matchmakingWindowMs > 0`, o pareamento espera a
+   * janela fechar e escolhe o par com Elo mais próximo entre todos os que
+   * estão esperando, em vez de sempre casar o primeiro que aparecer.
+   */
+  private waitingQueue: { ws: WebSocket; name: string }[] = [];
+  private matchmakeTimer: ReturnType<typeof setTimeout> | undefined;
   private bySocket = new Map<WebSocket, Series>();
   private invalidCount = new Map<WebSocket, number>();
   private latest: LiveMatch | null = null;
@@ -439,35 +463,85 @@ export class AgentServer {
     }
   }
 
-  private onHello(ws: WebSocket, name: string): void {
-    if (this.waiting && this.waiting.ws !== ws) {
-      const seriesId = `s${++this.counter}`;
-      const series = new Series(
-        seriesId,
-        { ws: this.waiting.ws, name: this.waiting.name },
-        { ws, name },
-        this.opts,
-        this.store,
-        (m) => {
-          this.latest = m;
-        },
-        () => {
-          /* série concluída; sockets podem encerrar */
-        },
-      );
-      this.bySocket.set(this.waiting.ws, series);
-      this.bySocket.set(ws, series);
-      this.waiting = null;
-      console.log(`[echo-front] série ${seriesId}: ${series.a.name} × ${series.b.name}`);
-      series.start();
-    } else {
-      this.waiting = { ws, name };
-      console.log(`[echo-front] "${name}" aguardando adversário`);
+  /** Elo atual do agente (1000 se ainda não jogou / sem persistência). */
+  private eloOf(name: string): number {
+    const row = this.store?.standings().find((s) => s.agent === name);
+    return row?.elo ?? 1000;
+  }
+
+  private pair(a: { ws: WebSocket; name: string }, b: { ws: WebSocket; name: string }): void {
+    const seriesId = `s${++this.counter}`;
+    const series = new Series(
+      seriesId,
+      a,
+      b,
+      this.opts,
+      this.store,
+      (m) => {
+        this.latest = m;
+      },
+      () => {
+        /* série concluída; sockets podem encerrar */
+      },
+    );
+    this.bySocket.set(a.ws, series);
+    this.bySocket.set(b.ws, series);
+    console.log(`[echo-front] série ${seriesId}: ${series.a.name} × ${series.b.name}`);
+    series.start();
+  }
+
+  /**
+   * Casa a fila de espera aos pares, sempre pelo menor diff de Elo
+   * disponível entre TODOS os que estão esperando (não só contra quem
+   * chegou por último) — repete até sobrar 0 ou 1 na fila.
+   */
+  private tryPairAll(): void {
+    while (this.waitingQueue.length >= 2) {
+      let bi = 0;
+      let bj = 1;
+      let bestDiff = Infinity;
+      for (let i = 0; i < this.waitingQueue.length; i++) {
+        for (let j = i + 1; j < this.waitingQueue.length; j++) {
+          const diff = Math.abs(
+            this.eloOf(this.waitingQueue[i]!.name) - this.eloOf(this.waitingQueue[j]!.name),
+          );
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bi = i;
+            bj = j;
+          }
+        }
+      }
+      const b = this.waitingQueue.splice(bj, 1)[0]!; // remove o índice maior primeiro
+      const a = this.waitingQueue.splice(bi, 1)[0]!;
+      this.pair(a, b);
     }
   }
 
+  private onHello(ws: WebSocket, name: string): void {
+    if (this.waitingQueue.some((w) => w.ws === ws)) return; // hello duplicado — já está na fila
+    this.waitingQueue.push({ ws, name });
+    if (this.opts.matchmakingWindowMs <= 0) {
+      this.tryPairAll();
+      return;
+    }
+    console.log(`[echo-front] "${name}" aguardando adversário (fila: ${this.waitingQueue.length})`);
+    if (!this.matchmakeTimer) {
+      this.matchmakeTimer = setTimeout(() => {
+        this.matchmakeTimer = undefined;
+        this.tryPairAll();
+      }, this.opts.matchmakingWindowMs);
+    }
+  }
+
+  /** Tamanho atual da fila de matchmaking — usado por /api/queue. */
+  queueLength(): number {
+    return this.waitingQueue.length;
+  }
+
   private onClose(ws: WebSocket): void {
-    if (this.waiting?.ws === ws) this.waiting = null;
+    const idx = this.waitingQueue.findIndex((w) => w.ws === ws);
+    if (idx >= 0) this.waitingQueue.splice(idx, 1);
     this.bySocket.get(ws)?.detach(ws);
     this.bySocket.delete(ws);
     this.invalidCount.delete(ws);

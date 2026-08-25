@@ -4,7 +4,14 @@
  * (decisão registrada na sprint-06).
  */
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  appendFileSync,
+  readdirSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import type { Team } from '@echo-front/protocol';
 import { decideWinner, replayToJsonl, type MatchState, type Replay } from '@echo-front/sim';
@@ -35,6 +42,14 @@ export interface MatchResult {
     kills: number;
   };
   finishedAt: string;
+  /**
+   * Rótulo de temporada (sprint-12), opcional — ex. "temporada-3". Serve só
+   * para filtrar `standings(season)`; o histórico completo nunca é
+   * descartado — results.jsonl é append-only entre execuções, e sem filtro
+   * `standings()` soma tudo (é assim que o Elo persiste entre rodadas em
+   * vez de ser recalculado do zero a cada uma).
+   */
+  season?: string;
 }
 
 export interface StandingRow {
@@ -117,7 +132,10 @@ export class MatchStore {
 
   recordResult(result: MatchResult, replay: Replay): void {
     appendFileSync(this.resultsPath(), JSON.stringify(result) + '\n');
-    writeFileSync(join(this.dir, 'replays', `${result.matchId}.replay.jsonl`), replayToJsonl(replay));
+    writeFileSync(
+      join(this.dir, 'replays', `${result.matchId}.replay.jsonl`),
+      replayToJsonl(replay),
+    );
   }
 
   listResults(): MatchResult[] {
@@ -142,7 +160,13 @@ export class MatchStore {
       .map((f) => f.replace('.replay.jsonl', ''));
   }
 
-  standings(): StandingRow[] {
+  /**
+   * Classificação a partir do histórico completo (persiste entre execuções
+   * — não é recalculada do zero a cada rodada). Passe `season` para
+   * restringir a uma temporada específica (sprint-12); sem argumento, soma
+   * tudo o que já foi jogado, com ou sem rótulo de temporada.
+   */
+  standings(season?: string): StandingRow[] {
     const rows = new Map<string, StandingRow>();
     const get = (agent: string): StandingRow => {
       if (!rows.has(agent)) {
@@ -160,7 +184,10 @@ export class MatchStore {
       }
       return rows.get(agent)!;
     };
-    for (const r of this.listResults()) {
+    const results = season
+      ? this.listResults().filter((r) => r.season === season)
+      : this.listResults();
+    for (const r of results) {
       // Elo: atualizado na ordem cronológica dos resultados.
       const rowC = get(r.agents.cian);
       const rowM = get(r.agents.magenta);
@@ -182,6 +209,8 @@ export class MatchStore {
         else row.losses += 1;
       }
     }
-    return [...rows.values()].sort((a, b) => b.points - a.points || b.elo - a.elo || b.wins - a.wins);
+    return [...rows.values()].sort(
+      (a, b) => b.points - a.points || b.elo - a.elo || b.wins - a.wins,
+    );
   }
 }

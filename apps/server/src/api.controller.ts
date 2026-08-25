@@ -1,4 +1,14 @@
-import { Controller, Get, NotFoundException, Param, Post, Body, BadRequestException, Header } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+  Body,
+  BadRequestException,
+  Header,
+  Query,
+} from '@nestjs/common';
 import { agentServer } from './match/agent-server.js';
 
 /**
@@ -6,14 +16,20 @@ import { agentServer } from './match/agent-server.js';
  */
 @Controller('api')
 export class ApiController {
+  /** `?season=` filtra pelo rótulo (sprint-12); sem query, soma todo o histórico. */
   @Get('leaderboard')
-  leaderboard() {
-    return { standings: agentServer.store?.standings() ?? [] };
+  leaderboard(@Query('season') season?: string) {
+    return { standings: agentServer.store?.standings(season || undefined) ?? [] };
   }
 
   @Get('matches')
   matches() {
     return { matches: agentServer.store?.listResults() ?? [] };
+  }
+
+  @Get('queue')
+  queue() {
+    return { waiting: agentServer.queueLength() };
   }
 
   @Get('matches/:id/replay')
