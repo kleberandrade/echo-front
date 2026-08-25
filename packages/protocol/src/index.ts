@@ -4,7 +4,7 @@ import { z } from 'zod';
  * ECHO//FRONT — protocolo agente ↔ servidor.
  * Referência humana: docs/04-protocolo-agente.md
  */
-export const PROTOCOL_VERSION = '0.2.0';
+export const PROTOCOL_VERSION = '0.3.0';
 
 // ---------------------------------------------------------------------------
 // Primitivas
@@ -236,6 +236,52 @@ export const AgentMessageSchema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('decision'), payload: DecisionPayloadSchema }),
 ]);
 export type AgentMessage = z.infer<typeof AgentMessageSchema>;
+
+// ---------------------------------------------------------------------------
+// Canal de espectador (/spectate) — formalizado na sprint-07.
+// O estado é o MatchState do sim serializado; o schema valida o envelope e
+// os campos que o front consome, sem acoplar a estrutura interna completa.
+// ---------------------------------------------------------------------------
+
+export const SpectateStateSchema = z.object({
+  type: z.literal('spectate_state'),
+  matchId: z.string(),
+  /** MatchState serializado do @echo-front/sim (validação estrutural mínima). */
+  state: z
+    .object({
+      cycle: z.number().int().nonnegative(),
+      units: z.array(z.unknown()),
+      score: z.object({ cian: z.number().int(), magenta: z.number().int() }),
+      ended: z.boolean(),
+    })
+    .passthrough(),
+});
+
+export const SpectateIdleSchema = z.object({
+  type: z.literal('spectate_idle'),
+  message: z.string(),
+});
+
+export const SpectateEndSchema = z.object({
+  type: z.literal('spectate_end'),
+  matchId: z.string(),
+  score: z.object({ cian: z.number().int(), magenta: z.number().int() }),
+  winner: TeamSchema.or(z.literal('draw')),
+  reason: z.string(),
+  seed: z.string(),
+  finalHash: z.string(),
+});
+
+export const SpectateMessageSchema = z.discriminatedUnion('type', [
+  SpectateStateSchema,
+  SpectateIdleSchema,
+  SpectateEndSchema,
+]);
+export type SpectateMessage = z.infer<typeof SpectateMessageSchema>;
+
+export function parseSpectateMessage(raw: unknown): SpectateMessage {
+  return SpectateMessageSchema.parse(typeof raw === 'string' ? JSON.parse(raw) : raw);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
