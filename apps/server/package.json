@@ -8,7 +8,8 @@
     "dev": "tsc -p tsconfig.json --watch & node --watch dist/main.js",
     "start": "node dist/main.js",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "tournament": "node dist/tournament.js"
   },
   "dependencies": {
     "@echo-front/protocol": "workspace:*",

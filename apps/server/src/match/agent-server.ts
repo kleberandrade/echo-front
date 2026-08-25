@@ -1,11 +1,9 @@
 /**
  * Núcleo do servidor de partidas — framework-free (o gateway Nest delega aqui).
- * Lobby de 2 agentes → LiveMatch com loop de ciclos em tempo real,
- * timeout implícito de decisão (o que não chegou até o fechamento vira no-op),
- * canal de espectador e replay JSONL em disco.
+ * Sprint 6: pareamento FIFO → SÉRIE ranqueada de N partidas com lados
+ * espelhados (semente k jogada 2×, trocando cian/magenta), resultados
+ * pontuados pelo regulamento e persistidos no MatchStore.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import type WebSocket from 'ws';
 import {
   isCompatibleVersion,
@@ -19,7 +17,6 @@ import {
   buildPerceptions,
   createMatch,
   decideWinner,
-  replayToJsonl,
   stateHash,
   stepCycle,
   SIM_VERSION,
@@ -30,21 +27,28 @@ import {
   type ReplayCycleRecord,
   DEFAULT_CONFIG,
 } from '@echo-front/sim';
+import { MatchStore, scoreMatch } from './store.js';
 
 export interface AgentServerOptions {
   /** Duração real de um ciclo em ms (500 = tempo de jogo 1:1). */
   cycleMs: number;
   cfg: MatchConfig;
-  /** Diretório onde replays são gravados; vazio desativa a gravação. */
-  replayDir: string;
-  seedFor: (matchId: string) => string;
+  /** Partidas por série (lados espelhados a cada 2). */
+  seriesGames: number;
+  /** Pausa entre partidas da série, em ms. */
+  interGameMs: number;
+  /** Diretório de dados; vazio desativa persistência. */
+  dataDir: string;
+  seedFor: (seriesId: string, seedIndex: number) => string;
 }
 
 const DEFAULT_OPTIONS: AgentServerOptions = {
   cycleMs: 500,
   cfg: DEFAULT_CONFIG,
-  replayDir: 'replays',
-  seedFor: (id) => `seed-${id}`,
+  seriesGames: 6,
+  interGameMs: 400,
+  dataDir: 'data',
+  seedFor: (seriesId, k) => `${seriesId}-seed-${k}`,
 };
 
 interface Seat {
@@ -57,19 +61,26 @@ function send(ws: WebSocket | null, msg: unknown): void {
   if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
 }
 
+export interface SeriesInfo {
+  seriesId: string;
+  game: number;
+  of: number;
+}
+
 export class LiveMatch {
   state: MatchState;
   private decisions: DecisionsByUnit = {};
   private cycles: ReplayCycleRecord[] = [];
   private timer: ReturnType<typeof setInterval> | undefined;
   private spectators = new Set<WebSocket>();
-  onEnd: ((replay: Replay) => void) | undefined;
+  onEnd: ((replay: Replay, finalState: MatchState) => void) | undefined;
 
   constructor(
     readonly id: string,
     readonly seed: string,
     readonly seats: Record<Team, Seat>,
     private readonly opts: AgentServerOptions,
+    readonly series?: SeriesInfo,
   ) {
     this.state = createMatch(seed, ARENA_ALPHA, opts.cfg);
   }
@@ -84,8 +95,9 @@ export class LiveMatch {
           team,
           unitIds: this.state.units.filter((u) => u.team === team).map((u) => u.id),
           protocolVersion: PROTOCOL_VERSION,
-          seedPublic: stateHash(this.state), // hash do estado inicial ≈ compromisso com a semente
+          seedPublic: stateHash(this.state),
           map: ARENA_ALPHA.id,
+          ...(this.series ? { series: this.series } : {}),
         },
       });
       send(this.seats[team].ws, {
@@ -98,7 +110,6 @@ export class LiveMatch {
     this.timer = setInterval(() => this.closeCycle(), this.opts.cycleMs);
   }
 
-  /** Fecha o ciclo corrente: aplica o que chegou (resto vira no-op) e avança. */
   private closeCycle(): void {
     const decisions = this.decisions;
     this.decisions = {};
@@ -157,12 +168,11 @@ export class LiveMatch {
       cycles: this.cycles,
       finalHash: stateHash(this.state),
     };
-    const { score } = this.state;
     const endMsg = {
       v: PROTOCOL_VERSION,
       type: 'match_end',
       payload: {
-        score,
+        score: this.state.score,
         winner: decideWinner(this.state),
         reason: this.state.endReason ?? ('time_up' as const),
         seed: this.seed,
@@ -172,29 +182,113 @@ export class LiveMatch {
     send(this.seats.cian.ws, endMsg);
     send(this.seats.magenta.ws, endMsg);
     for (const ws of this.spectators) send(ws, { type: 'spectate_end', ...endMsg.payload });
+    this.onEnd?.(replay, this.state);
+  }
+}
 
-    if (this.opts.replayDir) {
-      try {
-        mkdirSync(this.opts.replayDir, { recursive: true });
-        writeFileSync(join(this.opts.replayDir, `${this.id}.replay.jsonl`), replayToJsonl(replay));
-      } catch (err) {
-        console.error(`[echo-front] falha ao gravar replay de ${this.id}:`, err);
-      }
+/** Série ranqueada entre dois agentes conectados. */
+class Series {
+  private game = 0;
+  current: LiveMatch | undefined;
+
+  constructor(
+    readonly id: string,
+    /** a = primeiro da fila; b = segundo. */
+    readonly a: { ws: WebSocket | null; name: string },
+    readonly b: { ws: WebSocket | null; name: string },
+    private readonly opts: AgentServerOptions,
+    private readonly store: MatchStore | undefined,
+    private readonly onMatchStarted: (m: LiveMatch) => void,
+    private readonly onFinished: () => void,
+  ) {}
+
+  start(): void {
+    this.next();
+  }
+
+  private next(): void {
+    if (this.game >= this.opts.seriesGames) {
+      console.log(`[echo-front] série ${this.id} concluída (${this.opts.seriesGames} partidas)`);
+      this.onFinished();
+      return;
     }
-    this.onEnd?.(replay);
+    this.game += 1;
+    const seedIndex = Math.floor((this.game - 1) / 2);
+    const swapped = (this.game - 1) % 2 === 1; // lados espelhados
+    const cian = swapped ? this.b : this.a;
+    const magenta = swapped ? this.a : this.b;
+    const matchId = `${this.id}-g${this.game}`;
+    const match = new LiveMatch(
+      matchId,
+      this.opts.seedFor(this.id, seedIndex),
+      {
+        cian: { team: 'cian', ws: cian.ws, name: cian.name },
+        magenta: { team: 'magenta', ws: magenta.ws, name: magenta.name },
+      },
+      this.opts,
+      { seriesId: this.id, game: this.game, of: this.opts.seriesGames },
+    );
+    match.onEnd = (replay, finalState) => {
+      if (this.store) {
+        const alive = (team: Team) =>
+          finalState.units.filter((u) => u.team === team && u.alive).length;
+        const spent = (team: Team) =>
+          finalState.units.filter((u) => u.team === team).reduce((acc, u) => acc + u.energySpent, 0);
+        this.store.recordResult(
+          {
+            matchId,
+            seriesId: this.id,
+            game: this.game,
+            seed: match.seed,
+            finalHash: replay.finalHash,
+            agents: { cian: cian.name, magenta: magenta.name },
+            score: finalState.score,
+            winner: decideWinner(finalState),
+            reason: finalState.endReason ?? 'time_up',
+            points: scoreMatch(finalState),
+            stats: {
+              unitsAlive: { cian: alive('cian'), magenta: alive('magenta') },
+              energySpent: { cian: spent('cian'), magenta: spent('magenta') },
+              kills: finalState.units.filter((u) => !u.alive).length,
+            },
+            finishedAt: new Date().toISOString(),
+          },
+          replay,
+        );
+      }
+      setTimeout(() => this.next(), this.opts.interGameMs);
+    };
+    this.current = match;
+    this.onMatchStarted(match);
+    match.start();
+  }
+
+  detach(ws: WebSocket): void {
+    if (this.a.ws === ws) this.a.ws = null;
+    if (this.b.ws === ws) this.b.ws = null;
+    this.current?.detachSeat(ws);
   }
 }
 
 export class AgentServer {
   private opts: AgentServerOptions = { ...DEFAULT_OPTIONS };
+  store: MatchStore | undefined;
   private waiting: { ws: WebSocket; name: string } | null = null;
-  private bySocket = new Map<WebSocket, { match: LiveMatch; team: Team }>();
+  private bySocket = new Map<WebSocket, Series>();
   private latest: LiveMatch | null = null;
   private counter = 0;
-  onMatchEnd: ((match: LiveMatch, replay: Replay) => void) | undefined;
+
+  constructor() {
+    this.initStore();
+  }
+
+  private initStore(): void {
+    this.store = this.opts.dataDir ? new MatchStore(this.opts.dataDir) : undefined;
+  }
 
   configure(opts: Partial<AgentServerOptions>): void {
     this.opts = { ...this.opts, ...opts };
+    this.initStore();
   }
 
   attachAgentSocket(ws: WebSocket): void {
@@ -203,7 +297,7 @@ export class AgentServer {
   }
 
   attachSpectatorSocket(ws: WebSocket): void {
-    if (this.latest) this.latest.addSpectator(ws);
+    if (this.latest && !this.latest.finished) this.latest.addSpectator(ws);
     else send(ws, { type: 'spectate_idle', message: 'nenhuma partida em andamento' });
   }
 
@@ -229,13 +323,19 @@ export class AgentServer {
     }
 
     if (msg.type === 'hello') {
-      this.onHello(ws, msg.payload.agentName);
+      // Token válido usa o nome registrado; sem token joga como convidado.
+      let name = msg.payload.agentName;
+      if (msg.payload.token && this.store) {
+        const known = this.store.authenticate(msg.payload.token);
+        if (known) name = known.name;
+      }
+      this.onHello(ws, name);
       return;
     }
 
-    // decision
-    const seat = this.bySocket.get(ws);
-    if (!seat || seat.match.finished) {
+    const series = this.bySocket.get(ws);
+    const match = series?.current;
+    if (!match || match.finished) {
       send(ws, {
         v: PROTOCOL_VERSION,
         type: 'error',
@@ -244,30 +344,32 @@ export class AgentServer {
       return;
     }
     if (msg.unitId !== undefined) {
-      seat.match.submitDecision(seat.team, msg.unitId, msg.payload);
+      const team = match.seats.cian.ws === ws ? 'cian' : 'magenta';
+      match.submitDecision(team, msg.unitId, msg.payload);
     }
   }
 
   private onHello(ws: WebSocket, name: string): void {
     if (this.waiting && this.waiting.ws !== ws) {
-      const matchId = `m${++this.counter}`;
-      const seed = this.opts.seedFor(matchId);
-      const match = new LiveMatch(
-        matchId,
-        seed,
-        {
-          cian: { team: 'cian', ws: this.waiting.ws, name: this.waiting.name },
-          magenta: { team: 'magenta', ws, name },
-        },
+      const seriesId = `s${++this.counter}`;
+      const series = new Series(
+        seriesId,
+        { ws: this.waiting.ws, name: this.waiting.name },
+        { ws, name },
         this.opts,
+        this.store,
+        (m) => {
+          this.latest = m;
+        },
+        () => {
+          /* série concluída; sockets podem encerrar */
+        },
       );
-      this.bySocket.set(this.waiting.ws, { match, team: 'cian' });
-      this.bySocket.set(ws, { match, team: 'magenta' });
-      this.latest = match;
-      match.onEnd = (replay) => this.onMatchEnd?.(match, replay);
+      this.bySocket.set(this.waiting.ws, series);
+      this.bySocket.set(ws, series);
       this.waiting = null;
-      console.log(`[echo-front] partida ${matchId} iniciada (seed=${seed})`);
-      match.start();
+      console.log(`[echo-front] série ${seriesId}: ${series.a.name} × ${series.b.name}`);
+      series.start();
     } else {
       this.waiting = { ws, name };
       console.log(`[echo-front] "${name}" aguardando adversário`);
@@ -276,11 +378,8 @@ export class AgentServer {
 
   private onClose(ws: WebSocket): void {
     if (this.waiting?.ws === ws) this.waiting = null;
-    const seat = this.bySocket.get(ws);
-    if (seat) {
-      seat.match.detachSeat(ws); // unidades do time ficam em no-op; a partida segue
-      this.bySocket.delete(ws);
-    }
+    this.bySocket.get(ws)?.detach(ws);
+    this.bySocket.delete(ws);
   }
 }
 
