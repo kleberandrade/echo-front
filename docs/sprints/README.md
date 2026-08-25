@@ -14,6 +14,7 @@ Sprints de **2 semanas**, projeto solo/dupla. Cada sprint termina com uma **demo
 | [7](./sprint-07-hardening.md) | Hardening | Débitos técnicos quitados, CI com smoke, deploy Vercel |
 | [8](./sprint-08-temporada-1.md) | Temporada 1 | Modos Core Siege e Silent Hunt, rating Elo |
 | [9](./sprint-09-temporada-2.md) | Temporada 2 | Bots multi-modo, torneio nos três modos |
+| [10](./sprint-10-hunter-objetivo.md) | Hunter joga o objetivo | Débito quitado: hunter compete em data_run (13,2 → 80,4 pts) |
 
 ## Marcos
 
