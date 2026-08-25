@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 
 // Sem domínio de produção fixo ainda (o projeto não tem domínio próprio
@@ -44,7 +45,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body className="min-h-screen grid-bg antialiased">{children}</body>
+      <body className="min-h-screen grid-bg antialiased">
+        {children}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }
