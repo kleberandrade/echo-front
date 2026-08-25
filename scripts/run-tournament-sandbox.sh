@@ -53,8 +53,12 @@ curl -sf http://localhost:3001/health || { echo "erro: orquestrador não respond
 echo
 
 echo "==> subindo 2 agentes de exemplo na mesma rede, sem porta publicada"
+# Sem --rm de propósito: se a partida não completar, os containers (e os
+# logs deles) precisam sobreviver até o diagnóstico abaixo rodar — com
+# --rm um container que crasha cedo pode sumir antes da gente conseguir
+# olhar o log.
 for name in echo-agent-demo-a echo-agent-demo-b; do
-  docker run --rm -d --name "$name" --network "$NETWORK" \
+  docker run -d --name "$name" --network "$NETWORK" \
     --cpus 1 --memory 512m --pids-limit 128 --cap-drop ALL --security-opt no-new-privileges \
     -e "AGENT_WS_URL=ws://${ORCH_NAME}:3001/agent" -e "AGENT_NAME=$name" \
     "$AGENT_IMAGE"
@@ -72,16 +76,19 @@ if [ "$ok" = true ]; then
   echo "✓ pelo menos 1 partida completou — sandbox Docker funcionando de ponta a ponta."
   curl -s "http://localhost:3001/api/matches" | head -c 500
   echo
+  echo
+  echo "==> limpeza"
+  docker rm -f "$ORCH_NAME" echo-agent-demo-a echo-agent-demo-b >/dev/null 2>&1 || true
+  echo "(rede '$NETWORK' mantida — 'docker network rm $NETWORK' pra remover também)"
 else
-  echo "✗ nenhuma partida completou em 30s — inspecione:" >&2
-  echo "    docker logs echo-agent-demo-a" >&2
-  echo "    docker logs echo-agent-demo-b" >&2
-  echo "    docker logs $ORCH_NAME" >&2
+  echo "✗ nenhuma partida completou em 30s. Logs (containers deixados de pé de propósito):" >&2
+  for c in echo-agent-demo-a echo-agent-demo-b "$ORCH_NAME"; do
+    echo >&2
+    echo "--- docker logs $c ---" >&2
+    docker logs "$c" 2>&1 | tail -30 >&2
+  done
+  echo >&2
+  echo "Limpeza manual quando terminar de olhar: docker rm -f $ORCH_NAME echo-agent-demo-a echo-agent-demo-b" >&2
 fi
-
-echo
-echo "==> limpeza"
-docker rm -f "$ORCH_NAME" echo-agent-demo-a echo-agent-demo-b >/dev/null 2>&1 || true
-echo "(rede '$NETWORK' mantida — 'docker network rm $NETWORK' pra remover também)"
 
 [ "$ok" = true ]
