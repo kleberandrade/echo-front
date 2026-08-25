@@ -8,6 +8,7 @@ import type { Team } from '@echo-front/protocol';
 import { DEFAULT_CONFIG, decideWinner, runPerceptionMatch } from '@echo-front/sim';
 import { hunterBot, wandererBot, type PerceptionBotFn } from './bots.js';
 import { courierBot, tricksterBot } from './objective-bots.js';
+import { ghostBot, ghostConfig } from './ghost-bot.js';
 
 function arg(name: string, fallback: string): string {
   const i = process.argv.indexOf(`--${name}`);
@@ -20,6 +21,8 @@ export function makeBot(kind: string, team: Team): PerceptionBotFn {
       return courierBot(team);
     case 'trickster':
       return tricksterBot(team);
+    case 'ghost':
+      return ghostBot(team);
     case 'wanderer':
       return wandererBot();
     case 'hunter':
@@ -51,7 +54,10 @@ for (let i = 0; i < n; i++) {
     [bTeam]: makeBot(botB, bTeam),
   } as { cian: PerceptionBotFn; magenta: PerceptionBotFn };
 
-  const r = runPerceptionMatch({ seed, cfg, bots });
+  const matchCfg = [botA, botB].includes('ghost')
+    ? ghostConfig(botA === 'ghost' ? aTeam : bTeam, cfg)
+    : cfg;
+  const r = runPerceptionMatch({ seed, cfg: matchCfg, bots });
   const winner = decideWinner(r.finalState);
   const winnerBot = winner === 'draw' ? 'draw' : winner === aTeam ? botA : botB;
   if (winnerBot === botA) winsA++;

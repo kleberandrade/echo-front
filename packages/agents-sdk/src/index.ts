@@ -26,6 +26,7 @@ export interface AgentOptions {
 
 export { hunterBot, wandererBot, type PerceptionBotFn } from './bots.js';
 export { courierBot, tricksterBot } from './objective-bots.js';
+export { ghostBot, ghostConfig } from './ghost-bot.js';
 
 export class Agent {
   private ws: WebSocket | undefined;
