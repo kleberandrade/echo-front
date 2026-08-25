@@ -69,7 +69,7 @@ export default function LiveViewer({ wsUrl }: { wsUrl: string }) {
   }, []);
 
   return (
-    <div className="mx-auto max-w-[1200px] px-4 font-mono">
+    <div className="mx-auto max-w-[1440px] px-4 font-mono">
       <p className="py-3 text-center text-xs tracking-widest text-slate-400">{status}</p>
       {state && prev ? (
         <>

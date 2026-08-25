@@ -114,7 +114,7 @@ export default function ReplayViewer({ replayUrl }: { replayUrl: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-[1420px] px-4 pb-6 font-mono">
+    <div className="mx-auto max-w-[1440px] px-4 pb-6 font-mono">
       {/* Placar */}
       <div className="flex items-center justify-center gap-5 py-3 text-sm">
         <span className="tracking-[0.35em] text-cian">CIAN</span>

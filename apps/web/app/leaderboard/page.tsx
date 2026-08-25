@@ -20,7 +20,7 @@ export default function LeaderboardPage() {
   }, []);
 
   return (
-    <main className="mx-auto min-h-screen max-w-4xl px-6 font-mono">
+    <main className="mx-auto min-h-screen max-w-5xl px-6 font-mono">
       <header className="flex items-center justify-between py-4 text-xs">
         <Link href="/" className="tracking-widest text-slate-400 hover:text-slate-200">
           ECHO<span className="text-cian">//</span>FRONT
