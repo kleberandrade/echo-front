@@ -44,6 +44,7 @@ export default function LeaderboardPage() {
                 <th className="py-2">#</th>
                 <th>AGENTE</th>
                 <th className="text-right">PONTOS</th>
+                <th className="text-right">ELO</th>
                 <th className="text-right">V</th>
                 <th className="text-right">E</th>
                 <th className="text-right">D</th>
@@ -62,6 +63,7 @@ export default function LeaderboardPage() {
                     {r.agent}
                   </td>
                   <td className="text-right text-cian">{r.points.toFixed(1)}</td>
+                  <td className="text-right text-slate-200">{Math.round(r.elo)}</td>
                   <td className="text-right text-emerald-400">{r.wins}</td>
                   <td className="text-right text-slate-400">{r.draws}</td>
                   <td className="text-right text-red-400">{r.losses}</td>

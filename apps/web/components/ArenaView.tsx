@@ -240,13 +240,8 @@ export default function ArenaView(props: ArenaViewProps) {
         crystal(groundGlow, t.x, t.y, 7, COLORS.amber, 0.5, 6);
       }
 
-      // Núcleos: estrutura hex com glow do time.
-      for (const team of ['cian', 'magenta'] as const) {
-        const c = MAP.cores[team];
-        crystal(ground, c.x, c.y, 7, COLORS[team], 0.95, 8);
-        crystal(groundGlow, c.x, c.y, 10, COLORS[team], 0.6, 8);
-        dottedCircle(ground, c.x, c.y, CFG.fragments.captureRadius, COLORS[team], 0.6, 20);
-      }
+      // Núcleos: desenhados na camada dinâmica (posições vêm do ESTADO —
+      // em core_siege são sorteados por semente e têm integridade).
 
       // ------------------------------------------------------------------
       // Clique → seleção

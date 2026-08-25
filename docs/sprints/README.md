@@ -12,6 +12,7 @@ Sprints de **2 semanas**, projeto solo/dupla. Cada sprint termina com uma **demo
 | [5](./sprint-05-espectador-e-balanceamento.md) | Espectador avançado e balanceamento | Visões por time/unidade, camada de confiança, sim em massa |
 | [6](./sprint-06-competicao.md) | Competição | Partidas públicas por WS, leaderboard, docs para competidores |
 | [7](./sprint-07-hardening.md) | Hardening | Débitos técnicos quitados, CI com smoke, deploy Vercel |
+| [8](./sprint-08-temporada-1.md) | Temporada 1 | Modos Core Siege e Silent Hunt, rating Elo |
 
 ## Marcos
 

@@ -1,10 +1,11 @@
 {
-  "generatedAt": "2026-08-25T14:53:57.894Z",
+  "generatedAt": "2026-08-25T15:13:32.424Z",
   "games": 6,
   "standings": [
     {
       "agent": "trickster",
       "points": 79.4,
+      "elo": 1154,
       "wins": 17,
       "draws": 0,
       "losses": 1,
@@ -15,6 +16,7 @@
     {
       "agent": "ghost",
       "points": 53.7,
+      "elo": 991.1,
       "wins": 9,
       "draws": 0,
       "losses": 9,
@@ -25,6 +27,7 @@
     {
       "agent": "courier",
       "points": 48.3,
+      "elo": 1046.6,
       "wins": 10,
       "draws": 0,
       "losses": 8,
@@ -35,6 +38,7 @@
     {
       "agent": "hunter",
       "points": 6,
+      "elo": 808.3,
       "wins": 0,
       "draws": 0,
       "losses": 18,

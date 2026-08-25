@@ -6,6 +6,7 @@
 export interface StandingRow {
   agent: string;
   points: number;
+  elo: number;
   wins: number;
   draws: number;
   losses: number;
