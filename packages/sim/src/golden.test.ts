@@ -14,11 +14,11 @@ import { replayFromJsonl, resimulate } from './match.js';
 const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures');
 
 const GOLDEN = [
-  // Regeneradas em 2026-08-25 (Sprint 8): estado ganhou mode/corePositions/
-  // coreIntegrity/pulsesUsed (modos core_siege e silent_hunt).
-  { file: 'golden-alpha.replay.jsonl', hash: '1495d149aaf28f38', cycles: 60 },
-  { file: 'golden-beta.replay.jsonl', hash: '7efc7de94a5688de', cycles: 90 },
-  { file: 'golden-gamma.replay.jsonl', hash: '3e41530efeb9e3bd', cycles: 180 },
+  // Regeneradas em 2026-08-25 (Sprint 14): Unit ganhou knownEnemies (fog com
+  // envelhecimento — docs/05-simulacao.md), muda o hash de qualquer estado.
+  { file: 'golden-alpha.replay.jsonl', hash: '06879b3ae5b3366f', cycles: 60 },
+  { file: 'golden-beta.replay.jsonl', hash: '84020481b96462a0', cycles: 90 },
+  { file: 'golden-gamma.replay.jsonl', hash: 'a33842ce1e5ab631', cycles: 180 },
 ];
 
 describe('golden replays', () => {

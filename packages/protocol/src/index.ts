@@ -4,7 +4,7 @@ import { z } from 'zod';
  * ECHO//FRONT — protocolo agente ↔ servidor.
  * Referência humana: docs/04-protocolo-agente.md
  */
-export const PROTOCOL_VERSION = '0.5.0';
+export const PROTOCOL_VERSION = '0.6.0';
 
 // ---------------------------------------------------------------------------
 // Primitivas
@@ -73,11 +73,29 @@ export const RadarReadingSchema = z.object({
   distance_band: z.enum(['near', 'mid', 'far']).optional(),
 });
 
+/**
+ * Fog com envelhecimento (sprint-14, docs/05-simulacao.md): última posição
+ * conhecida de um inimigo (unidade/decoy/núcleo) que JÁ SAIU de `visual`
+ * agora — direção/distância recalculadas da posição atual de quem lembra
+ * até a posição LEMBRADA (defasada); confiança decai com
+ * `cycles_since_seen` até a memória expirar de vez (servidor para de
+ * mandar).
+ */
+export const MemoryReadingSchema = z.object({
+  type: z.enum(['unit', 'decoy', 'core']),
+  class_guess: UnitClassSchema.optional(),
+  direction: DirectionSchema,
+  distance: z.number().nonnegative(),
+  cycles_since_seen: z.number().int().positive(),
+  confidence: z.number().min(0).max(1),
+});
+
 export const SensorsSchema = z.object({
   visual: z.array(VisualReadingSchema),
   thermal: z.array(ThermalReadingSchema),
   sound: z.array(SoundReadingSchema),
   radar: z.array(RadarReadingSchema),
+  memory: z.array(MemoryReadingSchema),
 });
 export type Sensors = z.infer<typeof SensorsSchema>;
 

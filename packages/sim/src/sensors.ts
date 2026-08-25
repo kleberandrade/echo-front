@@ -11,6 +11,7 @@
  * - unidades com `hide` ativo somem de visão, som e radar.
  */
 import type {
+  MemoryReadingSchema,
   PerceptionPayload,
   RadarReadingSchema,
   SoundReadingSchema,
@@ -23,6 +24,7 @@ import { deriveStream, nextInt } from './rng.js';
 import { inInterference } from './step.js';
 import {
   angleDiff,
+  currentlyVisibleTargets,
   directionDeg,
   distanceUnits,
   hasLineOfSight,
@@ -35,6 +37,7 @@ export { directionDeg, distanceUnits, hasLineOfSight, obstaclesCrossed } from '.
 type VisualReading = z.infer<typeof VisualReadingSchema>;
 type SoundReading = z.infer<typeof SoundReadingSchema>;
 type RadarReading = z.infer<typeof RadarReadingSchema>;
+type MemoryReading = z.infer<typeof MemoryReadingSchema>;
 
 // ---------------------------------------------------------------------------
 // Visão
@@ -137,7 +140,8 @@ function soundFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig):
     const dist = distanceUnits(unit.x, unit.y, sx, sy);
     if (dist > sc.soundRange) return;
     const crossed = obstaclesCrossed(map, unit.x, unit.y, sx, sy);
-    const attenuated = base * (1 - dist / sc.soundRange) * Math.pow(sc.soundObstacleFactor, crossed);
+    const attenuated =
+      base * (1 - dist / sc.soundRange) * Math.pow(sc.soundObstacleFactor, crossed);
     const intensity = Math.round(attenuated * 100) / 100;
     if (intensity < sc.soundMinIntensity) return;
     const stream = deriveStream(state.seed, 'sound', state.cycle, unit.id, sourceKey);
@@ -173,7 +177,12 @@ function soundFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig):
 
 type ThermalReading = { intensity: number; direction: number };
 
-function thermalFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig): ThermalReading[] {
+function thermalFor(
+  unit: Unit,
+  state: MatchState,
+  map: MapDef,
+  cfg: MatchConfig,
+): ThermalReading[] {
   const sc = cfg.sensors;
   const out: ThermalReading[] = [];
 
@@ -202,6 +211,40 @@ function thermalFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig
   // Torres de energia: fontes fixas — falso positivo intencional.
   for (const tower of map.energyTowers) {
     sense(toFixed(tower.x), toFixed(tower.y), 0.5);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Memória (fog com envelhecimento — sprint-14)
+// ---------------------------------------------------------------------------
+
+/**
+ * Última posição conhecida de inimigos fora de visão AGORA (quem está
+ * visível já sai como `sensors.visual` — não duplica aqui). Direção/
+ * distância são recalculadas da posição ATUAL de `unit` até a posição
+ * LEMBRADA (defasada) — a unidade não sabe que o inimigo se moveu desde
+ * então. Confiança decai com `cycles_since_seen`; expiração de vez fica a
+ * cargo de `cfg.sensors.enemyMemoryCycles` em step.ts (aqui só filtra o que
+ * ainda está na memória, já expirada ou não).
+ */
+function memoryFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig): MemoryReading[] {
+  const visibleNow = new Set(currentlyVisibleTargets(unit, state, map, cfg).map((v) => v.id));
+  const out: MemoryReading[] = [];
+  for (const m of unit.knownEnemies) {
+    if (visibleNow.has(m.enemyId)) continue;
+    const age = state.cycle - m.lastSeenCycle;
+    if (age > cfg.sensors.enemyMemoryCycles) continue; // já devia ter sido podada em step.ts; defensivo
+    const confidence = Math.max(0.1, Math.round((0.85 - age * 0.06) * 20) / 20);
+    const type = m.classGuess === 'decoy' || m.classGuess === 'core' ? m.classGuess : 'unit';
+    out.push({
+      type,
+      ...(type === 'unit' ? { class_guess: m.classGuess as Unit['class'] } : {}),
+      direction: directionDeg(unit.x, unit.y, m.x, m.y),
+      distance: Math.round(distanceUnits(unit.x, unit.y, m.x, m.y) * 10) / 10,
+      cycles_since_seen: age,
+      confidence,
+    });
   }
   return out;
 }
@@ -328,7 +371,8 @@ export function buildPerception(
       angleDiff(dir, unit.heading) <= stats.visionFov / 2 &&
       hasLineOfSight(map, unit.x, unit.y, frag.x, frag.y);
     const pulsed = state.pulses.some(
-      (p) => p.team === unit.team && distanceUnits(p.x, p.y, frag.x, frag.y) <= cfg.sensors.radarRadius,
+      (p) =>
+        p.team === unit.team && distanceUnits(p.x, p.y, frag.x, frag.y) <= cfg.sensors.radarRadius,
     );
     if (seen || pulsed) {
       known.push({
@@ -355,6 +399,7 @@ export function buildPerception(
       thermal: thermalFor(unit, state, map, cfg),
       sound: soundFor(unit, state, map, cfg),
       radar: radarFor(unit, state, cfg),
+      memory: memoryFor(unit, state, map, cfg),
     },
     allies,
     team_messages,

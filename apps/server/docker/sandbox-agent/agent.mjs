@@ -17,7 +17,7 @@
 import WebSocket from 'ws';
 
 // Só o major precisa bater com o servidor (isCompatibleVersion em packages/protocol).
-const PROTOCOL_VERSION = '0.5.0';
+const PROTOCOL_VERSION = '0.6.0';
 
 const WS_URL = process.env.AGENT_WS_URL;
 const AGENT_NAME = process.env.AGENT_NAME || 'sandbox-agent';

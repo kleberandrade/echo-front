@@ -26,6 +26,7 @@ const validPerception = {
     thermal: [{ intensity: 0.74, direction: 110 }],
     sound: [{ intensity: 0.41, direction: 270 }],
     radar: [],
+    memory: [],
   },
   allies: [],
   team_messages: [{ from: 'cian_observer_1', cycle: 117, data: 'possible_enemy_near_relay_2' }],

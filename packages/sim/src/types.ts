@@ -35,6 +35,12 @@ export interface SensorConfig {
   heatTrailCycles: number;
   /** silent_hunt: máximo de pulse_scan por unidade na partida (0 = ilimitado). */
   maxPulsesPerMatch: number;
+  /**
+   * Fog com envelhecimento (débito da sprint-04, quitado na sprint-14):
+   * ciclos que uma unidade "lembra" da última posição vista de um inimigo
+   * (visão) depois de perdê-lo de vista, antes da memória expirar de vez.
+   */
+  enemyMemoryCycles: number;
 }
 
 export interface ActionsConfig {
@@ -127,6 +133,7 @@ export const DEFAULT_CONFIG: MatchConfig = {
     thermalObstacleFactor: 0.5,
     heatTrailCycles: 3,
     maxPulsesPerMatch: 0,
+    enemyMemoryCycles: 12,
   },
   actions: {
     decoyCost: 20,
@@ -161,12 +168,54 @@ export const DEFAULT_CONFIG: MatchConfig = {
     spawnEveryCycles: 15,
   },
   classes: {
-    observer: { maxSpeedPerTick: 400, maxEnergy: 120, maxIntegrity: 60, visionFov: 120, visionRange: 18, soundBase: 0.5 },
-    runner: { maxSpeedPerTick: 700, maxEnergy: 100, maxIntegrity: 80, visionFov: 90, visionRange: 14, soundBase: 0.55 },
-    warden: { maxSpeedPerTick: 300, maxEnergy: 100, maxIntegrity: 140, visionFov: 90, visionRange: 14, soundBase: 0.5 },
-    phantom: { maxSpeedPerTick: 550, maxEnergy: 110, maxIntegrity: 60, visionFov: 90, visionRange: 14, soundBase: 0.35 },
-    disruptor: { maxSpeedPerTick: 450, maxEnergy: 110, maxIntegrity: 90, visionFov: 90, visionRange: 14, soundBase: 0.5 },
-    architect: { maxSpeedPerTick: 300, maxEnergy: 130, maxIntegrity: 100, visionFov: 90, visionRange: 14, soundBase: 0.5 },
+    observer: {
+      maxSpeedPerTick: 400,
+      maxEnergy: 120,
+      maxIntegrity: 60,
+      visionFov: 120,
+      visionRange: 18,
+      soundBase: 0.5,
+    },
+    runner: {
+      maxSpeedPerTick: 700,
+      maxEnergy: 100,
+      maxIntegrity: 80,
+      visionFov: 90,
+      visionRange: 14,
+      soundBase: 0.55,
+    },
+    warden: {
+      maxSpeedPerTick: 300,
+      maxEnergy: 100,
+      maxIntegrity: 140,
+      visionFov: 90,
+      visionRange: 14,
+      soundBase: 0.5,
+    },
+    phantom: {
+      maxSpeedPerTick: 550,
+      maxEnergy: 110,
+      maxIntegrity: 60,
+      visionFov: 90,
+      visionRange: 14,
+      soundBase: 0.35,
+    },
+    disruptor: {
+      maxSpeedPerTick: 450,
+      maxEnergy: 110,
+      maxIntegrity: 90,
+      visionFov: 90,
+      visionRange: 14,
+      soundBase: 0.5,
+    },
+    architect: {
+      maxSpeedPerTick: 300,
+      maxEnergy: 130,
+      maxIntegrity: 100,
+      visionFov: 90,
+      visionRange: 14,
+      soundBase: 0.5,
+    },
   },
 };
 
@@ -195,6 +244,26 @@ export interface Unit {
   lastAllies: AllySnapshot[];
   /** silent_hunt: pulsos já disparados nesta partida. */
   pulsesUsed: number;
+  /**
+   * Fog com envelhecimento (sprint-14): última posição conhecida de cada
+   * inimigo (unidade, decoy ou núcleo) já avistado por esta unidade, mesmo
+   * fora de visão agora — expira depois de `cfg.sensors.enemyMemoryCycles`
+   * ciclos sem reavistamento. `enemyId` é uso interno do sim (correlacionar
+   * avistamentos entre ciclos); nunca é exposto ao agente — a percepção
+   * (`sensors.memory`, ver @echo-front/protocol) só expõe direção/distância/
+   * confiança relativas à posição ATUAL de quem lembra.
+   */
+  knownEnemies: EnemyMemory[];
+}
+
+/** Entrada de memória de fog com envelhecimento — ver `Unit.knownEnemies`. */
+export interface EnemyMemory {
+  enemyId: string;
+  x: Fixed;
+  y: Fixed;
+  classGuess: UnitClass | 'decoy' | 'core';
+  /** Ciclo em que este inimigo foi visto pela última vez. */
+  lastSeenCycle: number;
 }
 
 /** Mensagem de time em trânsito (enviada no ciclo `cycle`, entregue no seguinte). */

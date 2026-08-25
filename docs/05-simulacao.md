@@ -4,12 +4,12 @@ Especificação do núcleo determinístico (`packages/sim`).
 
 ## Tempo
 
-| Conceito | Valor MVP |
-|---|---|
-| Tick | 100 ms (10 ticks/s) |
-| Ciclo de decisão | 5 ticks (2 decisões/s por unidade) |
-| Partida (Data Run) | 90 s = 900 ticks = 180 ciclos |
-| Timeout de decisão | 350 ms após envio da percepção |
+| Conceito           | Valor MVP                          |
+| ------------------ | ---------------------------------- |
+| Tick               | 100 ms (10 ticks/s)                |
+| Ciclo de decisão   | 5 ticks (2 decisões/s por unidade) |
+| Partida (Data Run) | 90 s = 900 ticks = 180 ciclos      |
+| Timeout de decisão | 350 ms após envio da percepção     |
 
 O servidor coleta decisões de forma assíncrona durante o ciclo; todas as decisões válidas recebidas até o fechamento do ciclo são aplicadas **juntas** no primeiro tick do ciclo seguinte. Latência de rede dentro do timeout não dá vantagem.
 
@@ -30,16 +30,17 @@ Ordem fixa (determinismo):
 
 ```ts
 interface MatchState {
-  cycle: number; tick: number;
-  seed: string;               // semente da partida
-  rngState: number;           // estado do PRNG (serializável)
-  units: Unit[];              // ordenadas por unitId
+  cycle: number;
+  tick: number;
+  seed: string; // semente da partida
+  rngState: number; // estado do PRNG (serializável)
+  units: Unit[]; // ordenadas por unitId
   fragments: Fragment[];
   decoys: Decoy[];
   walls: TempWall[];
-  map: MapRef;                // id + versão do mapa (dados estáticos ficam fora do estado)
+  map: MapRef; // id + versão do mapa (dados estáticos ficam fora do estado)
   score: { cian: number; magenta: number };
-  events: GameEvent[];        // eventos do tick corrente
+  events: GameEvent[]; // eventos do tick corrente
 }
 ```
 
@@ -48,26 +49,39 @@ interface MatchState {
 ## Modelo dos sensores
 
 ### Visão
+
 - Cone de 90° centrado no `heading`, alcance 14 (Observer: 120°/18).
 - Raycast na grade contra obstáculos e paredes temporárias; oclusão total (MVP, sem penumbra).
 - Alvo com `hide` ativo: invisível. Decoy: **visível como decoy** (visão é o contra-decoy).
 - Leitura: tipo (`unit`/`decoy`/`fragment`), `class_guess` com `confidence` decrescente com a distância.
 
 ### Som
+
 - Fontes: movimento (proporcional a `speed` × assinatura da classe), `speed_boost` (alto), `strike`, decoys (emitem perfil sonoro configurado).
 - Alcance 30, atravessa obstáculos com atenuação de 40% por obstáculo.
 - Jitter direcional: ±25° uniforme via PRNG. Sem estimativa de distância — só `intensity` (0–1).
 
 ### Radar ativo (`pulse_scan`)
+
 - Snapshot de todas as entidades (unidades não-ocultas, decoys com assinatura de radar, fragmentos) num raio 18, com posição quantizada em células de 2×2 (imprecisão fixa).
 - Custo 25 (Observer 15), cooldown 5 ciclos.
 - Efeito colateral: todas as unidades no mapa recebem no ciclo leitura `radar: [{ type: "pulse_origin", direction, distance_band }]` + evento global `pulse_scan_detected`.
 
 ### Térmico (pós-MVP)
+
 - Intensidade por classe/atividade; rastros residuais por 3 ciclos onde a unidade passou; torres de energia são fontes fixas (falso positivo intencional).
 - Detecta unidades com `hide` (contramedida da camuflagem), sem identificar tipo.
 
+### Memória / fog com envelhecimento (sprint-14)
+
+- Débito aberto desde a sprint-04: até aqui, `sensors.visual` só reportava quem está visível **agora** — perder de vista um inimigo apagava qualquer rastro dele, mesmo que a própria unidade lembrasse a última posição na cabeça.
+- Cada unidade guarda internamente (`Unit.knownEnemies`, em `packages/sim`) a última posição vista de cada inimigo (unidade, decoy ou núcleo) que já esteve na sua visão — atualizada todo ciclo em que ele está visível, junto com o cálculo de `sensors.visual`.
+- Quem sai de visão continua na memória por `cfg.sensors.enemyMemoryCycles` ciclos (padrão 12 = 6 s) antes de expirar de vez.
+- Exposto ao agente como `sensors.memory`: só quem está **fora** de `sensors.visual` agora (não duplica); direção/distância recalculadas da posição ATUAL de quem lembra até a posição LEMBRADA (a unidade não sabe que o alvo se moveu desde então); `confidence` decai com `cycles_since_seen` até a memória expirar e a leitura sumir.
+- Puramente geométrico — sem RNG, sem custo de energia, não é uma ação: é o que sobra na cabeça da unidade depois de ter visto algo uma vez. Ver `packages/sim/src/geometry.ts` (`currentlyVisibleTargets`, compartilhada entre `step.ts` e `sensors.ts`) e `MemoryReadingSchema` em `@echo-front/protocol`.
+
 ### Comunicação
+
 - `message_to_team` entregue no ciclo seguinte a todos os aliados **fora** de zona de interferência.
 - Em zona de interferência: mensagem descartada silenciosamente e `allies` do receptor fica defasado (último estado conhecido, com `stale: true`).
 - Interceptação pelo Disruptor: pós-MVP.

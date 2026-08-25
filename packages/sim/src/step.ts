@@ -5,7 +5,12 @@
 import { dist2, moveFixed, toFixed } from './fixed.js';
 import { isBlockedFixed, towerAt, type MapDef } from './map.js';
 import { deriveStream, nextInt, seedRng } from './rng.js';
-import { distanceUnits, hasLineOfSight, inVisionCone } from './geometry.js';
+import {
+  currentlyVisibleTargets,
+  distanceUnits,
+  hasLineOfSight,
+  inVisionCone,
+} from './geometry.js';
 import {
   DEFAULT_CONFIG,
   type DecisionsByUnit,
@@ -15,7 +20,7 @@ import {
   type Unit,
 } from './types.js';
 
-export const SIM_VERSION = '0.6.0';
+export const SIM_VERSION = '0.7.0';
 
 // ---------------------------------------------------------------------------
 // Estado inicial
@@ -52,6 +57,7 @@ export function createMatch(
         energySpent: 0,
         lastAllies: [],
         pulsesUsed: 0,
+        knownEnemies: [],
       });
     });
   }
@@ -59,7 +65,10 @@ export function createMatch(
 
   // Núcleos: fixos em data_run/silent_hunt; sorteados por semente em core_siege
   // (o "localizar" do modo — o adversário não sabe qual par foi escolhido).
-  let site = map.cores !== undefined ? { cian: map.cores.cian, magenta: map.cores.magenta } : map.coreSites[0]!;
+  let site =
+    map.cores !== undefined
+      ? { cian: map.cores.cian, magenta: map.cores.magenta }
+      : map.coreSites[0]!;
   if (cfg.mode === 'core_siege' && map.coreSites.length > 0) {
     const pick = nextInt(deriveStream(seed, 'core_site'), map.coreSites.length).value;
     site = map.coreSites[pick]!;
@@ -306,7 +315,8 @@ export function step(
   for (const unit of s.units) {
     if (!unit.alive || unit.speed === 0 || unit.hiddenCycles > 0) continue;
     const stats = cfg.classes[unit.class];
-    let effectiveSpeed = unit.energy <= 0 ? Math.min(unit.speed, cfg.exhaustedSpeedCap) : unit.speed;
+    let effectiveSpeed =
+      unit.energy <= 0 ? Math.min(unit.speed, cfg.exhaustedSpeedCap) : unit.speed;
     let maxPerTick = stats.maxSpeedPerTick;
     if (unit.boosting) maxPerTick = Math.round((maxPerTick * cfg.actions.boostFactor) / 1000);
     if (unit.carryingFragment)
@@ -325,7 +335,7 @@ export function step(
       ty = ny;
     }
 
-    const minD2 = (2 * cfg.unitRadius) * (2 * cfg.unitRadius);
+    const minD2 = 2 * cfg.unitRadius * (2 * cfg.unitRadius);
     const collides = s.units.some(
       (o) => o.id !== unit.id && o.alive && dist2(tx, ty, o.x, o.y) < minD2,
     );
@@ -400,6 +410,37 @@ export function step(
           carryingFragment: u.carryingFragment,
           cycle: s.cycle,
         }));
+    }
+
+    // Fog com envelhecimento (sprint-14): quem está visível agora renova/
+    // cria a memória; entradas sem reavistamento por mais de
+    // `enemyMemoryCycles` expiram. Roda pra toda unidade viva, independente
+    // de interferência (é memória do próprio sensor de visão da unidade,
+    // não comunicação de time — mecanismo diferente de `lastAllies`).
+    for (const unit of s.units) {
+      if (!unit.alive) continue;
+      const visible = currentlyVisibleTargets(unit, s, map, cfg);
+      const seenIds = new Set(visible.map((v) => v.id));
+      for (const v of visible) {
+        const existing = unit.knownEnemies.find((m) => m.enemyId === v.id);
+        if (existing) {
+          existing.x = v.x;
+          existing.y = v.y;
+          existing.classGuess = v.classGuess as Unit['class'] | 'decoy' | 'core';
+          existing.lastSeenCycle = s.cycle;
+        } else {
+          unit.knownEnemies.push({
+            enemyId: v.id,
+            x: v.x,
+            y: v.y,
+            classGuess: v.classGuess as Unit['class'] | 'decoy' | 'core',
+            lastSeenCycle: s.cycle,
+          });
+        }
+      }
+      unit.knownEnemies = unit.knownEnemies.filter(
+        (m) => seenIds.has(m.enemyId) || s.cycle - m.lastSeenCycle <= cfg.sensors.enemyMemoryCycles,
+      );
     }
 
     // Rastros de calor: decaem; unidades em movimento deixam calor residual.

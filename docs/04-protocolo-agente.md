@@ -13,7 +13,7 @@ Contrato entre o simulador e os agentes. Versão do protocolo: **`0.1.0`** (pré
 Toda mensagem tem envelope:
 
 ```json
-{ "v": "0.1.0", "type": "perception", "cycle": 118, "unitId": "cian_runner_1", "payload": { } }
+{ "v": "0.1.0", "type": "perception", "cycle": 118, "unitId": "cian_runner_1", "payload": {} }
 ```
 
 Tipos servidor→agente: `welcome`, `perception`, `match_start`, `match_end`, `error`.
@@ -35,32 +35,47 @@ Tipos agente→servidor: `hello`, `decision`.
   },
   "sensors": {
     "visual": [
-      { "type": "unit", "class_guess": "observer", "direction": 83, "distance": 21, "confidence": 0.9 },
+      {
+        "type": "unit",
+        "class_guess": "observer",
+        "direction": 83,
+        "distance": 21,
+        "confidence": 0.9
+      },
       { "type": "movement", "direction": 83, "distance": 21, "confidence": 0.5 }
     ],
-    "thermal": [
-      { "intensity": 0.74, "direction": 110 }
-    ],
-    "sound": [
-      { "intensity": 0.41, "direction": 270 }
-    ],
-    "radar": []
+    "thermal": [{ "intensity": 0.74, "direction": 110 }],
+    "sound": [{ "intensity": 0.41, "direction": 270 }],
+    "radar": [],
+    "memory": [
+      {
+        "type": "unit",
+        "class_guess": "warden",
+        "direction": 205,
+        "distance": 12,
+        "cycles_since_seen": 4,
+        "confidence": 0.61
+      }
+    ]
   },
   "allies": [
-    { "unitId": "cian_observer_1", "position": [38, 22], "energy": 55, "integrity": 100, "carrying_fragment": false }
+    {
+      "unitId": "cian_observer_1",
+      "position": [38, 22],
+      "energy": 55,
+      "integrity": 100,
+      "carrying_fragment": false
+    }
   ],
   "team_messages": [
     { "from": "cian_observer_1", "cycle": 117, "data": "possible_enemy_near_relay_2" }
   ],
-  "events": [
-    "relay_2_activated",
-    "communication_interference"
-  ],
+  "events": ["relay_2_activated", "communication_interference"],
   "objective": {
     "mode": "data_run",
     "score": { "cian": 1, "magenta": 0 },
     "time_remaining_cycles": 62,
-    "known_fragments": [ { "position": [55, 20], "state": "spawned", "confidence": 1.0 } ]
+    "known_fragments": [{ "position": [55, 20], "state": "spawned", "confidence": 1.0 }]
   }
 }
 ```
@@ -72,6 +87,7 @@ Notas de design:
 - `allies` só tem dados completos se a comunicação estiver funcional; sob `communication_interference`, `allies` chega vazio ou defasado.
 - Decoys **não são marcados**: um decoy bem construído é indistinguível nas leituras de som/radar. Distinguir é problema do agente.
 - `visual` fora do cone/oclusão simplesmente não aparece — ausência de leitura não é ausência de inimigo.
+- `memory` (sprint-14, fog com envelhecimento — docs/05-simulacao.md): última posição conhecida de um inimigo que já esteve em `visual` antes mas saiu de vista — não duplica quem já está em `visual` agora. `direction`/`distance` são recalculadas da posição ATUAL da unidade até a posição LEMBRADA (defasada); `confidence` decai com `cycles_since_seen` até a entrada expirar (some da lista, não fica em 0 pra sempre).
 
 ## Decisão (`decision.payload`)
 
@@ -85,14 +101,14 @@ Notas de design:
 }
 ```
 
-| Campo | Obrigatório | Regras |
-|---|---|---|
-| `movement.direction` | não | graus; omitido = mantém rumo |
-| `movement.speed` | não | 0.0–1.0 (multiplicado pela velocidade da classe); >1.0 é clampado |
-| `action` | não | uma por ciclo: `pulse_scan` \| `deploy_decoy` \| `hide` \| `speed_boost` \| `strike` \| `pickup` \| `drop` |
-| `target` | se a ação exigir | posição alvo; validada por alcance |
-| `message_to_team` | não | string ≤ 64 bytes; entregue no próximo ciclo se comunicação ok |
-| `debug` | não | **ignorado pela simulação**; gravado no replay e exibido no espectador ("72% de confiança…") |
+| Campo                | Obrigatório      | Regras                                                                                                     |
+| -------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------- |
+| `movement.direction` | não              | graus; omitido = mantém rumo                                                                               |
+| `movement.speed`     | não              | 0.0–1.0 (multiplicado pela velocidade da classe); >1.0 é clampado                                          |
+| `action`             | não              | uma por ciclo: `pulse_scan` \| `deploy_decoy` \| `hide` \| `speed_boost` \| `strike` \| `pickup` \| `drop` |
+| `target`             | se a ação exigir | posição alvo; validada por alcance                                                                         |
+| `message_to_team`    | não              | string ≤ 64 bytes; entregue no próximo ciclo se comunicação ok                                             |
+| `debug`              | não              | **ignorado pela simulação**; gravado no replay e exibido no espectador ("72% de confiança…")               |
 
 Validação: payloads que falham no schema → `error` + no-op. Ação sem energia suficiente → no-op da ação (movimento ainda vale). Três payloads inválidos consecutivos → aviso; dez → desconexão (a partida segue com a unidade em no-op).
 
