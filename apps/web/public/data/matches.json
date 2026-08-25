@@ -1,0 +1,1193 @@
+{
+  "generatedAt": "2026-08-25T14:37:45.564Z",
+  "matches": [
+    {
+      "matchId": "s1-g1",
+      "seriesId": "s1",
+      "game": 1,
+      "seed": "friendly-s1-0",
+      "finalHash": "2a01e151b72430a2",
+      "agents": {
+        "cian": "courier",
+        "magenta": "trickster"
+      },
+      "score": {
+        "cian": 2,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 1.4,
+        "magenta": 4.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 248,
+          "magenta": 341
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:07.887Z"
+    },
+    {
+      "matchId": "s1-g2",
+      "seriesId": "s1",
+      "game": 2,
+      "seed": "friendly-s1-0",
+      "finalHash": "679c8cab40a713f2",
+      "agents": {
+        "cian": "trickster",
+        "magenta": "courier"
+      },
+      "score": {
+        "cian": 3,
+        "magenta": 1
+      },
+      "winner": "cian",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 4.7,
+        "magenta": 0.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 0
+        },
+        "energySpent": {
+          "cian": 363,
+          "magenta": 163
+        },
+        "kills": 2
+      },
+      "finishedAt": "2026-08-25T14:36:10.709Z"
+    },
+    {
+      "matchId": "s1-g3",
+      "seriesId": "s1",
+      "game": 3,
+      "seed": "friendly-s1-1",
+      "finalHash": "45dcd4f3fa440c12",
+      "agents": {
+        "cian": "courier",
+        "magenta": "trickster"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 2
+      },
+      "winner": "magenta",
+      "reason": "time_up",
+      "points": {
+        "cian": 0.2,
+        "magenta": 4.4
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 791,
+          "magenta": 535
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:15.401Z"
+    },
+    {
+      "matchId": "s1-g4",
+      "seriesId": "s1",
+      "game": 4,
+      "seed": "friendly-s1-1",
+      "finalHash": "ef1e3c0e95fff913",
+      "agents": {
+        "cian": "trickster",
+        "magenta": "courier"
+      },
+      "score": {
+        "cian": 1,
+        "magenta": 2
+      },
+      "winner": "magenta",
+      "reason": "time_up",
+      "points": {
+        "cian": 0.9,
+        "magenta": 4.2
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 531,
+          "magenta": 790
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:20.037Z"
+    },
+    {
+      "matchId": "s1-g5",
+      "seriesId": "s1",
+      "game": 5,
+      "seed": "friendly-s1-2",
+      "finalHash": "662353d62e972ca9",
+      "agents": {
+        "cian": "courier",
+        "magenta": "trickster"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 2
+      },
+      "winner": "magenta",
+      "reason": "time_up",
+      "points": {
+        "cian": 0.2,
+        "magenta": 4.4
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 779,
+          "magenta": 553
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:24.650Z"
+    },
+    {
+      "matchId": "s1-g6",
+      "seriesId": "s1",
+      "game": 6,
+      "seed": "friendly-s1-2",
+      "finalHash": "a9f495460a001bfd",
+      "agents": {
+        "cian": "trickster",
+        "magenta": "courier"
+      },
+      "score": {
+        "cian": 3,
+        "magenta": 2
+      },
+      "winner": "cian",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 4.9,
+        "magenta": 1.2
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 375,
+          "magenta": 415
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:27.900Z"
+    },
+    {
+      "matchId": "s2-g1",
+      "seriesId": "s2",
+      "game": 1,
+      "seed": "friendly-s2-0",
+      "finalHash": "22b52e722f0d0d61",
+      "agents": {
+        "cian": "courier",
+        "magenta": "ghost"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 0.2,
+        "magenta": 4.9
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 191,
+          "magenta": 49
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:29.741Z"
+    },
+    {
+      "matchId": "s2-g2",
+      "seriesId": "s2",
+      "game": 2,
+      "seed": "friendly-s2-0",
+      "finalHash": "7f6e7dd0805320bf",
+      "agents": {
+        "cian": "ghost",
+        "magenta": "courier"
+      },
+      "score": {
+        "cian": 2,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 1.4,
+        "magenta": 4.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 68,
+          "magenta": 386
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:33.394Z"
+    },
+    {
+      "matchId": "s2-g3",
+      "seriesId": "s2",
+      "game": 3,
+      "seed": "friendly-s2-1",
+      "finalHash": "5dd048afc3bf1428",
+      "agents": {
+        "cian": "courier",
+        "magenta": "ghost"
+      },
+      "score": {
+        "cian": 1,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 0.7,
+        "magenta": 4.9
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 225,
+          "magenta": 53
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:35.152Z"
+    },
+    {
+      "matchId": "s2-g4",
+      "seriesId": "s2",
+      "game": 4,
+      "seed": "friendly-s2-1",
+      "finalHash": "0b2453f4244645f7",
+      "agents": {
+        "cian": "ghost",
+        "magenta": "courier"
+      },
+      "score": {
+        "cian": 1,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 0.9,
+        "magenta": 4.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 28,
+          "magenta": 226
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:37.261Z"
+    },
+    {
+      "matchId": "s2-g5",
+      "seriesId": "s2",
+      "game": 5,
+      "seed": "friendly-s2-2",
+      "finalHash": "860cb005cf8b1620",
+      "agents": {
+        "cian": "courier",
+        "magenta": "ghost"
+      },
+      "score": {
+        "cian": 3,
+        "magenta": 2
+      },
+      "winner": "cian",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 4.7,
+        "magenta": 1.4
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 276,
+          "magenta": 34
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:39.193Z"
+    },
+    {
+      "matchId": "s2-g6",
+      "seriesId": "s2",
+      "game": 6,
+      "seed": "friendly-s2-2",
+      "finalHash": "58e08ac4eaf59127",
+      "agents": {
+        "cian": "ghost",
+        "magenta": "courier"
+      },
+      "score": {
+        "cian": 3,
+        "magenta": 2
+      },
+      "winner": "cian",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 4.9,
+        "magenta": 1.2
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 90,
+          "magenta": 282
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:42.006Z"
+    },
+    {
+      "matchId": "s3-g1",
+      "seriesId": "s3",
+      "game": 1,
+      "seed": "friendly-s3-0",
+      "finalHash": "d1d061f05e8b1f31",
+      "agents": {
+        "cian": "courier",
+        "magenta": "hunter"
+      },
+      "score": {
+        "cian": 1,
+        "magenta": 0
+      },
+      "winner": "cian",
+      "reason": "time_up",
+      "points": {
+        "cian": 3.7,
+        "magenta": 0.4
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 416,
+          "magenta": 398
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:46.732Z"
+    },
+    {
+      "matchId": "s3-g2",
+      "seriesId": "s3",
+      "game": 2,
+      "seed": "friendly-s3-0",
+      "finalHash": "a5a5970f4c9bf9be",
+      "agents": {
+        "cian": "hunter",
+        "magenta": "courier"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 0.4,
+        "magenta": 4.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 190,
+          "magenta": 279
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:48.723Z"
+    },
+    {
+      "matchId": "s3-g3",
+      "seriesId": "s3",
+      "game": 3,
+      "seed": "friendly-s3-1",
+      "finalHash": "53a7166f0ac6e2ee",
+      "agents": {
+        "cian": "courier",
+        "magenta": "hunter"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 0
+      },
+      "winner": "cian",
+      "reason": "time_up",
+      "points": {
+        "cian": 3.2,
+        "magenta": 0.4
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 627,
+          "magenta": 398
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:53.377Z"
+    },
+    {
+      "matchId": "s3-g4",
+      "seriesId": "s3",
+      "game": 4,
+      "seed": "friendly-s3-1",
+      "finalHash": "a53fbbb0bad9a439",
+      "agents": {
+        "cian": "hunter",
+        "magenta": "courier"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 0.4,
+        "magenta": 4.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 152,
+          "magenta": 198
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:54.874Z"
+    },
+    {
+      "matchId": "s3-g5",
+      "seriesId": "s3",
+      "game": 5,
+      "seed": "friendly-s3-2",
+      "finalHash": "07c81533845445fa",
+      "agents": {
+        "cian": "courier",
+        "magenta": "hunter"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 0
+      },
+      "winner": "cian",
+      "reason": "time_up",
+      "points": {
+        "cian": 3.2,
+        "magenta": 0.4
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 624,
+          "magenta": 398
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:36:59.485Z"
+    },
+    {
+      "matchId": "s3-g6",
+      "seriesId": "s3",
+      "game": 6,
+      "seed": "friendly-s3-2",
+      "finalHash": "95cdd2541b418f3b",
+      "agents": {
+        "cian": "hunter",
+        "magenta": "courier"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 0.4,
+        "magenta": 4.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 204,
+          "magenta": 245
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:37:01.643Z"
+    },
+    {
+      "matchId": "s4-g1",
+      "seriesId": "s4",
+      "game": 1,
+      "seed": "friendly-s4-0",
+      "finalHash": "cb24ffa18169cc9e",
+      "agents": {
+        "cian": "trickster",
+        "magenta": "ghost"
+      },
+      "score": {
+        "cian": 3,
+        "magenta": 1
+      },
+      "winner": "cian",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 4.7,
+        "magenta": 0.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 0
+        },
+        "energySpent": {
+          "cian": 369,
+          "magenta": 36
+        },
+        "kills": 2
+      },
+      "finishedAt": "2026-08-25T14:37:04.279Z"
+    },
+    {
+      "matchId": "s4-g2",
+      "seriesId": "s4",
+      "game": 2,
+      "seed": "friendly-s4-0",
+      "finalHash": "15d753d34b9d013c",
+      "agents": {
+        "cian": "ghost",
+        "magenta": "trickster"
+      },
+      "score": {
+        "cian": 2,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 1.3,
+        "magenta": 4.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 1,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 35,
+          "magenta": 271
+        },
+        "kills": 1
+      },
+      "finishedAt": "2026-08-25T14:37:06.162Z"
+    },
+    {
+      "matchId": "s4-g3",
+      "seriesId": "s4",
+      "game": 3,
+      "seed": "friendly-s4-1",
+      "finalHash": "af083a13c7501a2a",
+      "agents": {
+        "cian": "trickster",
+        "magenta": "ghost"
+      },
+      "score": {
+        "cian": 3,
+        "magenta": 2
+      },
+      "winner": "cian",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 4.7,
+        "magenta": 1.2
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 0
+        },
+        "energySpent": {
+          "cian": 505,
+          "magenta": 36
+        },
+        "kills": 2
+      },
+      "finishedAt": "2026-08-25T14:37:09.818Z"
+    },
+    {
+      "matchId": "s4-g4",
+      "seriesId": "s4",
+      "game": 4,
+      "seed": "friendly-s4-1",
+      "finalHash": "175a59b6a10c345d",
+      "agents": {
+        "cian": "ghost",
+        "magenta": "trickster"
+      },
+      "score": {
+        "cian": 2,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 1.2,
+        "magenta": 4.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 0,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 39,
+          "magenta": 409
+        },
+        "kills": 2
+      },
+      "finishedAt": "2026-08-25T14:37:12.902Z"
+    },
+    {
+      "matchId": "s4-g5",
+      "seriesId": "s4",
+      "game": 5,
+      "seed": "friendly-s4-2",
+      "finalHash": "a81116fa43d4403b",
+      "agents": {
+        "cian": "trickster",
+        "magenta": "ghost"
+      },
+      "score": {
+        "cian": 3,
+        "magenta": 1
+      },
+      "winner": "cian",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 4.7,
+        "magenta": 0.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 0
+        },
+        "energySpent": {
+          "cian": 285,
+          "magenta": 23
+        },
+        "kills": 2
+      },
+      "finishedAt": "2026-08-25T14:37:14.758Z"
+    },
+    {
+      "matchId": "s4-g6",
+      "seriesId": "s4",
+      "game": 6,
+      "seed": "friendly-s4-2",
+      "finalHash": "ac53a0b29979fd5b",
+      "agents": {
+        "cian": "ghost",
+        "magenta": "trickster"
+      },
+      "score": {
+        "cian": 1,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 0.8,
+        "magenta": 4.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 1,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 34,
+          "magenta": 246
+        },
+        "kills": 1
+      },
+      "finishedAt": "2026-08-25T14:37:16.735Z"
+    },
+    {
+      "matchId": "s5-g1",
+      "seriesId": "s5",
+      "game": 1,
+      "seed": "friendly-s5-0",
+      "finalHash": "477eac8c2a8b0005",
+      "agents": {
+        "cian": "trickster",
+        "magenta": "hunter"
+      },
+      "score": {
+        "cian": 3,
+        "magenta": 0
+      },
+      "winner": "cian",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 4.7,
+        "magenta": 0.4
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 312,
+          "magenta": 248
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:37:19.536Z"
+    },
+    {
+      "matchId": "s5-g2",
+      "seriesId": "s5",
+      "game": 2,
+      "seed": "friendly-s5-0",
+      "finalHash": "74a81366a6ce5f99",
+      "agents": {
+        "cian": "hunter",
+        "magenta": "trickster"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 0.4,
+        "magenta": 4.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 158,
+          "magenta": 175
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:37:21.116Z"
+    },
+    {
+      "matchId": "s5-g3",
+      "seriesId": "s5",
+      "game": 3,
+      "seed": "friendly-s5-1",
+      "finalHash": "05857d9f1d92eef0",
+      "agents": {
+        "cian": "trickster",
+        "magenta": "hunter"
+      },
+      "score": {
+        "cian": 1,
+        "magenta": 0
+      },
+      "winner": "cian",
+      "reason": "time_up",
+      "points": {
+        "cian": 3.7,
+        "magenta": 0.4
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 411,
+          "magenta": 398
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:37:25.716Z"
+    },
+    {
+      "matchId": "s5-g4",
+      "seriesId": "s5",
+      "game": 4,
+      "seed": "friendly-s5-1",
+      "finalHash": "cdef7caf4ece30f0",
+      "agents": {
+        "cian": "hunter",
+        "magenta": "trickster"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 0.4,
+        "magenta": 4.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 176,
+          "magenta": 196
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:37:27.521Z"
+    },
+    {
+      "matchId": "s5-g5",
+      "seriesId": "s5",
+      "game": 5,
+      "seed": "friendly-s5-2",
+      "finalHash": "064a43719e00f25c",
+      "agents": {
+        "cian": "trickster",
+        "magenta": "hunter"
+      },
+      "score": {
+        "cian": 3,
+        "magenta": 0
+      },
+      "winner": "cian",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 4.7,
+        "magenta": 0.4
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 153,
+          "magenta": 150
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:37:29.027Z"
+    },
+    {
+      "matchId": "s5-g6",
+      "seriesId": "s5",
+      "game": 6,
+      "seed": "friendly-s5-2",
+      "finalHash": "08ad9a71840c0edc",
+      "agents": {
+        "cian": "hunter",
+        "magenta": "trickster"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 0.4,
+        "magenta": 4.7
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 158,
+          "magenta": 183
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:37:30.674Z"
+    },
+    {
+      "matchId": "s6-g1",
+      "seriesId": "s6",
+      "game": 1,
+      "seed": "friendly-s6-0",
+      "finalHash": "01d2dd0e73507585",
+      "agents": {
+        "cian": "ghost",
+        "magenta": "hunter"
+      },
+      "score": {
+        "cian": 3,
+        "magenta": 0
+      },
+      "winner": "cian",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 4.9,
+        "magenta": 0.2
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 61,
+          "magenta": 158
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:37:32.342Z"
+    },
+    {
+      "matchId": "s6-g2",
+      "seriesId": "s6",
+      "game": 2,
+      "seed": "friendly-s6-0",
+      "finalHash": "b47c222c04342963",
+      "agents": {
+        "cian": "hunter",
+        "magenta": "ghost"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 0.2,
+        "magenta": 4.9
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 214,
+          "magenta": 80
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:37:34.760Z"
+    },
+    {
+      "matchId": "s6-g3",
+      "seriesId": "s6",
+      "game": 3,
+      "seed": "friendly-s6-1",
+      "finalHash": "358c956a314d6d29",
+      "agents": {
+        "cian": "ghost",
+        "magenta": "hunter"
+      },
+      "score": {
+        "cian": 3,
+        "magenta": 0
+      },
+      "winner": "cian",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 4.9,
+        "magenta": 0.2
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 86,
+          "magenta": 276
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:37:37.822Z"
+    },
+    {
+      "matchId": "s6-g4",
+      "seriesId": "s6",
+      "game": 4,
+      "seed": "friendly-s6-1",
+      "finalHash": "3ac4b08969c025d0",
+      "agents": {
+        "cian": "hunter",
+        "magenta": "ghost"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 0.2,
+        "magenta": 4.9
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 214,
+          "magenta": 78
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:37:40.092Z"
+    },
+    {
+      "matchId": "s6-g5",
+      "seriesId": "s6",
+      "game": 5,
+      "seed": "friendly-s6-2",
+      "finalHash": "98349284bb281221",
+      "agents": {
+        "cian": "ghost",
+        "magenta": "hunter"
+      },
+      "score": {
+        "cian": 3,
+        "magenta": 0
+      },
+      "winner": "cian",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 4.9,
+        "magenta": 0.2
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 88,
+          "magenta": 180
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:37:41.946Z"
+    },
+    {
+      "matchId": "s6-g6",
+      "seriesId": "s6",
+      "game": 6,
+      "seed": "friendly-s6-2",
+      "finalHash": "86dd2a75103407d2",
+      "agents": {
+        "cian": "hunter",
+        "magenta": "ghost"
+      },
+      "score": {
+        "cian": 0,
+        "magenta": 3
+      },
+      "winner": "magenta",
+      "reason": "fragments_delivered",
+      "points": {
+        "cian": 0.2,
+        "magenta": 4.9
+      },
+      "stats": {
+        "unitsAlive": {
+          "cian": 2,
+          "magenta": 2
+        },
+        "energySpent": {
+          "cian": 250,
+          "magenta": 97
+        },
+        "kills": 0
+      },
+      "finishedAt": "2026-08-25T14:37:44.672Z"
+    }
+  ]
+}

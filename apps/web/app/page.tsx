@@ -28,6 +28,18 @@ export default function Home() {
         >
           ⦿ AO VIVO
         </Link>
+        <Link
+          href="/leaderboard"
+          className="border border-amber-400/40 bg-amber-400/10 px-6 py-3 tracking-widest text-amber transition hover:bg-amber-400/20"
+        >
+          ◆ LEADERBOARD
+        </Link>
+        <Link
+          href="/compete"
+          className="border border-slate-700 px-6 py-3 tracking-widest text-slate-400 transition hover:border-slate-500 hover:text-slate-200"
+        >
+          COMPETIR
+        </Link>
       </div>
 
       <div className="mt-8 grid w-full grid-cols-1 gap-4 text-left font-mono text-xs sm:grid-cols-3">

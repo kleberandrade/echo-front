@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-08-25T14:37:45.564Z",
+  "games": 6,
+  "standings": [
+    {
+      "agent": "trickster",
+      "points": 79.4,
+      "wins": 17,
+      "draws": 0,
+      "losses": 1,
+      "matches": 18,
+      "fragmentsDelivered": 48,
+      "noKillWins": 10
+    },
+    {
+      "agent": "ghost",
+      "points": 53.7,
+      "wins": 9,
+      "draws": 0,
+      "losses": 9,
+      "matches": 18,
+      "fragmentsDelivered": 41,
+      "noKillWins": 9
+    },
+    {
+      "agent": "courier",
+      "points": 48.3,
+      "wins": 10,
+      "draws": 0,
+      "losses": 8,
+      "matches": 18,
+      "fragmentsDelivered": 29,
+      "noKillWins": 10
+    },
+    {
+      "agent": "hunter",
+      "points": 6,
+      "wins": 0,
+      "draws": 0,
+      "losses": 18,
+      "matches": 18,
+      "fragmentsDelivered": 0,
+      "noKillWins": 0
+    }
+  ]
+}
