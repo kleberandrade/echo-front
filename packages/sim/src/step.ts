@@ -15,7 +15,7 @@ import {
   type Unit,
 } from './types.js';
 
-export const SIM_VERSION = '0.4.0';
+export const SIM_VERSION = '0.5.0';
 
 // ---------------------------------------------------------------------------
 // Estado inicial
@@ -50,6 +50,7 @@ export function createMatch(
         hiddenCycles: 0,
         boosting: false,
         energySpent: 0,
+        lastAllies: [],
       });
     });
   }
@@ -218,13 +219,17 @@ export function step(
         }
         case 'strike': {
           if ((unit.cooldowns['strike'] ?? 0) === 0 && unit.energy >= ac.strikeCost) {
-            // Alvo: inimigo vivo mais próximo dentro do alcance.
+            // Alvo: inimigo dentro do alcance do atacante; com `target`, o mais
+            // próximo do ponto de mira — sem `target`, o mais próximo de si.
+            const aimX = d.target ? toFixed(d.target[0]) : unit.x;
+            const aimY = d.target ? toFixed(d.target[1]) : unit.y;
             let best: Unit | undefined;
             let bestDist = Infinity;
             for (const enemy of s.units) {
               if (enemy.team === unit.team || !enemy.alive) continue;
-              const dist = distanceUnits(unit.x, unit.y, enemy.x, enemy.y);
-              if (dist <= ac.strikeRange && dist < bestDist) {
+              if (distanceUnits(unit.x, unit.y, enemy.x, enemy.y) > ac.strikeRange) continue;
+              const dist = distanceUnits(aimX, aimY, enemy.x, enemy.y);
+              if (dist < bestDist) {
                 best = enemy;
                 bestDist = dist;
               }
@@ -262,8 +267,7 @@ export function step(
   for (const unit of s.units) {
     if (!unit.alive || unit.speed === 0 || unit.hiddenCycles > 0) continue;
     const stats = cfg.classes[unit.class];
-    let effectiveSpeed =
-      unit.energy <= 0 ? Math.min(unit.speed, cfg.exhaustedSpeedCap) : unit.speed;
+    let effectiveSpeed = unit.energy <= 0 ? Math.min(unit.speed, cfg.exhaustedSpeedCap) : unit.speed;
     let maxPerTick = stats.maxSpeedPerTick;
     if (unit.boosting) maxPerTick = Math.round((maxPerTick * cfg.actions.boostFactor) / 1000);
     if (unit.carryingFragment)
@@ -282,7 +286,7 @@ export function step(
       ty = ny;
     }
 
-    const minD2 = 2 * cfg.unitRadius * (2 * cfg.unitRadius);
+    const minD2 = (2 * cfg.unitRadius) * (2 * cfg.unitRadius);
     const collides = s.units.some(
       (o) => o.id !== unit.id && o.alive && dist2(tx, ty, o.x, o.y) < minD2,
     );
@@ -342,6 +346,22 @@ export function step(
     }
     for (const decoy of s.decoys) decoy.lifeCycles -= 1;
     s.decoys = s.decoys.filter((d) => d.lifeCycles > 0);
+
+    // Aliados: quem está FORA de interferência atualiza seu último quadro.
+    for (const unit of s.units) {
+      if (!unit.alive || inInterference(map, unit.x, unit.y)) continue;
+      unit.lastAllies = s.units
+        .filter((u) => u.team === unit.team && u.id !== unit.id && u.alive)
+        .map((u) => ({
+          unitId: u.id,
+          x: u.x,
+          y: u.y,
+          energy: u.energy,
+          integrity: u.integrity,
+          carryingFragment: u.carryingFragment,
+          cycle: s.cycle,
+        }));
+    }
 
     // Rastros de calor: decaem; unidades em movimento deixam calor residual.
     for (const t of s.heatTrails) t.cyclesLeft -= 1;
@@ -417,9 +437,7 @@ function objectiveTick(s: MatchState, map: MapDef, cfg: MatchConfig): void {
       const carrier = s.units.find((u) => u.id === frag.carrier);
       if (!carrier || !carrier.alive) continue;
       const core = map.cores[carrier.team];
-      if (
-        distanceUnits(carrier.x, carrier.y, toFixed(core.x), toFixed(core.y)) <= fc.captureRadius
-      ) {
+      if (distanceUnits(carrier.x, carrier.y, toFixed(core.x), toFixed(core.y)) <= fc.captureRadius) {
         frag.state = 'delivered';
         frag.carrier = undefined;
         carrier.carryingFragment = false;

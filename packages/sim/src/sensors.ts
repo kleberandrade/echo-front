@@ -120,8 +120,7 @@ function soundFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig):
     const dist = distanceUnits(unit.x, unit.y, sx, sy);
     if (dist > sc.soundRange) return;
     const crossed = obstaclesCrossed(map, unit.x, unit.y, sx, sy);
-    const attenuated =
-      base * (1 - dist / sc.soundRange) * Math.pow(sc.soundObstacleFactor, crossed);
+    const attenuated = base * (1 - dist / sc.soundRange) * Math.pow(sc.soundObstacleFactor, crossed);
     const intensity = Math.round(attenuated * 100) / 100;
     if (intensity < sc.soundMinIntensity) return;
     const stream = deriveStream(state.seed, 'sound', state.cycle, unit.id, sourceKey);
@@ -157,12 +156,7 @@ function soundFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig):
 
 type ThermalReading = { intensity: number; direction: number };
 
-function thermalFor(
-  unit: Unit,
-  state: MatchState,
-  map: MapDef,
-  cfg: MatchConfig,
-): ThermalReading[] {
+function thermalFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig): ThermalReading[] {
   const sc = cfg.sensors;
   const out: ThermalReading[] = [];
 
@@ -272,16 +266,26 @@ export function buildPerception(
   const events = [...state.cycleEvents];
   if (inZone) events.push('communication_interference');
 
-  const allies = state.units
-    .filter((u) => u.team === unit.team && u.id !== unit.id && u.alive)
-    .map((u) => ({
-      unitId: u.id,
-      position: [fromFixed(u.x), fromFixed(u.y)] as [number, number],
-      energy: u.energy,
-      integrity: u.integrity,
-      carrying_fragment: u.carryingFragment,
-      ...(inZone ? { stale: true } : {}),
-    }));
+  // Sob interferência, a unidade fica com o ÚLTIMO quadro que conheceu
+  // (posições defasadas, stale: true) em vez de dados atuais.
+  const allies = inZone
+    ? unit.lastAllies.map((a) => ({
+        unitId: a.unitId,
+        position: [fromFixed(a.x), fromFixed(a.y)] as [number, number],
+        energy: a.energy,
+        integrity: a.integrity,
+        carrying_fragment: a.carryingFragment,
+        stale: true,
+      }))
+    : state.units
+        .filter((u) => u.team === unit.team && u.id !== unit.id && u.alive)
+        .map((u) => ({
+          unitId: u.id,
+          position: [fromFixed(u.x), fromFixed(u.y)] as [number, number],
+          energy: u.energy,
+          integrity: u.integrity,
+          carrying_fragment: u.carryingFragment,
+        }));
 
   const team_messages = inZone
     ? []
@@ -301,8 +305,7 @@ export function buildPerception(
       angleDiff(dir, unit.heading) <= stats.visionFov / 2 &&
       hasLineOfSight(map, unit.x, unit.y, frag.x, frag.y);
     const pulsed = state.pulses.some(
-      (p) =>
-        p.team === unit.team && distanceUnits(p.x, p.y, frag.x, frag.y) <= cfg.sensors.radarRadius,
+      (p) => p.team === unit.team && distanceUnits(p.x, p.y, frag.x, frag.y) <= cfg.sensors.radarRadius,
     );
     if (seen || pulsed) {
       known.push({

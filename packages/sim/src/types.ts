@@ -138,54 +138,12 @@ export const DEFAULT_CONFIG: MatchConfig = {
     spawnEveryCycles: 15,
   },
   classes: {
-    observer: {
-      maxSpeedPerTick: 400,
-      maxEnergy: 120,
-      maxIntegrity: 60,
-      visionFov: 120,
-      visionRange: 18,
-      soundBase: 0.5,
-    },
-    runner: {
-      maxSpeedPerTick: 700,
-      maxEnergy: 100,
-      maxIntegrity: 80,
-      visionFov: 90,
-      visionRange: 14,
-      soundBase: 0.55,
-    },
-    warden: {
-      maxSpeedPerTick: 300,
-      maxEnergy: 100,
-      maxIntegrity: 140,
-      visionFov: 90,
-      visionRange: 14,
-      soundBase: 0.5,
-    },
-    phantom: {
-      maxSpeedPerTick: 550,
-      maxEnergy: 110,
-      maxIntegrity: 60,
-      visionFov: 90,
-      visionRange: 14,
-      soundBase: 0.35,
-    },
-    disruptor: {
-      maxSpeedPerTick: 450,
-      maxEnergy: 110,
-      maxIntegrity: 90,
-      visionFov: 90,
-      visionRange: 14,
-      soundBase: 0.5,
-    },
-    architect: {
-      maxSpeedPerTick: 300,
-      maxEnergy: 130,
-      maxIntegrity: 100,
-      visionFov: 90,
-      visionRange: 14,
-      soundBase: 0.5,
-    },
+    observer: { maxSpeedPerTick: 400, maxEnergy: 120, maxIntegrity: 60, visionFov: 120, visionRange: 18, soundBase: 0.5 },
+    runner: { maxSpeedPerTick: 700, maxEnergy: 100, maxIntegrity: 80, visionFov: 90, visionRange: 14, soundBase: 0.55 },
+    warden: { maxSpeedPerTick: 300, maxEnergy: 100, maxIntegrity: 140, visionFov: 90, visionRange: 14, soundBase: 0.5 },
+    phantom: { maxSpeedPerTick: 550, maxEnergy: 110, maxIntegrity: 60, visionFov: 90, visionRange: 14, soundBase: 0.35 },
+    disruptor: { maxSpeedPerTick: 450, maxEnergy: 110, maxIntegrity: 90, visionFov: 90, visionRange: 14, soundBase: 0.5 },
+    architect: { maxSpeedPerTick: 300, maxEnergy: 130, maxIntegrity: 100, visionFov: 90, visionRange: 14, soundBase: 0.5 },
   },
 };
 
@@ -210,6 +168,8 @@ export interface Unit {
   boosting: boolean;
   /** Energia total consumida em ações/movimento (tiebreak de eficiência). */
   energySpent: number;
+  /** Último quadro de aliados conhecido (atualizado fora de interferência). */
+  lastAllies: AllySnapshot[];
 }
 
 /** Mensagem de time em trânsito (enviada no ciclo `cycle`, entregue no seguinte). */
@@ -254,6 +214,18 @@ export interface Noise {
   x: Fixed;
   y: Fixed;
   intensity: number;
+}
+
+/** Último snapshot de aliados visto por uma unidade FORA de interferência. */
+export interface AllySnapshot {
+  unitId: string;
+  x: Fixed;
+  y: Fixed;
+  energy: number;
+  integrity: number;
+  carryingFragment: boolean;
+  /** Ciclo em que o snapshot foi tirado. */
+  cycle: number;
 }
 
 /** Rastro de calor residual deixado por unidades em movimento. */
