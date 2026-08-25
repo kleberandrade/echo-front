@@ -64,11 +64,18 @@ for name in echo-agent-demo-a echo-agent-demo-b; do
     "$AGENT_IMAGE"
 done
 
-echo "==> aguardando uma partida terminar (até 30s)…"
+# Uma partida de verdade dura totalCycles × cycleMs = 180 × 500ms = 90s
+# (packages/sim/src/types.ts DEFAULT_CONFIG.totalCycles, apps/server/src/
+# match/agent-server.ts DEFAULT_OPTIONS.cycleMs) — um timeout de 30s aqui
+# nunca completaria uma partida mesmo com tudo funcionando perfeitamente.
+# 110s dá folga (90s de jogo + tempo de conexão/pareamento).
+MATCH_WAIT_S=110
+echo "==> aguardando uma partida terminar (até ${MATCH_WAIT_S}s — uma partida de verdade leva ~90s)…"
 ok=false
-for i in $(seq 1 30); do
+for i in $(seq 1 "$MATCH_WAIT_S"); do
   n=$(curl -sf "http://localhost:3001/api/matches" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{console.log(JSON.parse(d).matches.length)}catch{console.log(0)}})' 2>/dev/null || echo 0)
   if [ "${n:-0}" -gt 0 ]; then ok=true; break; fi
+  if [ $((i % 15)) -eq 0 ]; then echo "   ...ainda esperando (${i}s)"; fi
   sleep 1
 done
 
@@ -81,7 +88,7 @@ if [ "$ok" = true ]; then
   docker rm -f "$ORCH_NAME" echo-agent-demo-a echo-agent-demo-b >/dev/null 2>&1 || true
   echo "(rede '$NETWORK' mantida — 'docker network rm $NETWORK' pra remover também)"
 else
-  echo "✗ nenhuma partida completou em 30s. Logs (containers deixados de pé de propósito):" >&2
+  echo "✗ nenhuma partida completou em ${MATCH_WAIT_S}s. Logs (containers deixados de pé de propósito):" >&2
   for c in echo-agent-demo-a echo-agent-demo-b "$ORCH_NAME"; do
     echo >&2
     echo "--- docker logs $c ---" >&2

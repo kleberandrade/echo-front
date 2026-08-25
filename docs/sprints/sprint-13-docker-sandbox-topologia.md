@@ -27,10 +27,18 @@ Nem o ambiente de nuvem nem o acesso ao Mac do usuário usado nesta sessão têm
 
 - `pnpm build` / `pnpm -r test`: sem mudança de comportamento em código de produção (só o Dockerfile/script novos e um comentário corrigido) — 126 testes, todos verdes.
 - `pnpm --filter @echo-front/server deploy --prod --legacy` + `node dist/main.js`: validado manualmente, servidor de pé respondendo `/health`.
+- **Rodado de verdade** (fora deste ambiente, numa máquina com Docker/OrbStack, pelo usuário): `./scripts/run-tournament-sandbox.sh` ponta a ponta, em 3 rodadas sucessivas, cada uma corrigindo o problema encontrado na anterior — ver "Bugs encontrados rodando de verdade" abaixo. Na 3ª rodada, com os dois bugs corrigidos, uma partida completou de ponta a ponta dentro do sandbox Docker: rede `--internal`, orquestrador containerizado, dois agentes competidores conectando, pareando e disputando uma partida de `data_run` até `time_up`, com replay verificável.
+
+## Bugs encontrados rodando de verdade (e corrigidos)
+
+Rodar o script numa máquina com Docker de verdade revelou dois problemas que nenhuma verificação sem Docker (mocks, `pnpm deploy` isolado, testes unitários) poderia ter pego:
+
+1. **Build do Dockerfile faltava `agents-sdk`**: `tournament.ts` importa os _tipos_ de `@echo-front/agents-sdk`, então o `tsc` do server quebrava com `Cannot find module '@echo-front/agents-sdk'` — a cadeia de build do `apps/server/Dockerfile` só buildava `protocol`, `sim` e `server`. Reproduzido sem Docker (apagando os `dist/` dos packages e rodando a mesma cadeia de comandos) e corrigido adicionando `pnpm --filter @echo-front/agents-sdk build` à cadeia.
+2. **Corrida de inicialização: agente sem retry de conexão.** Com o build corrigido, o orquestrador subia e respondia `/health`, mas a partida não completava — os logs mostraram um agente com `ECONNREFUSED` (tentou conectar antes do orquestrador estar pronto pra aceitar conexões na rede interna, mesmo já respondendo `/health` pela porta publicada no host) e o outro agente conectado, sozinho, esperando um adversário que nunca chegaria. `apps/server/docker/sandbox-agent/agent.mjs` conectava exatamente uma vez, sem retry — uma falha transitória de conexão deixava o agente permanentemente fora do torneio. Corrigido com reconexão com backoff (1s, 2s, 3s... até um teto de 5s, até 30 tentativas). Reproduzido e verificado sem Docker: dois agentes apontados pra uma porta ainda sem servidor nenhum escutando, com o servidor subindo alguns segundos depois — ambos os agentes levaram o `ECONNREFUSED` inicial, reconectaram sozinhos assim que o servidor existiu, e a série pareou normalmente.
+   - Efeito colateral encontrado no mesmo processo: o timeout de "aguardar partida completar" do script era de 30s, mas uma partida de verdade dura `totalCycles × cycleMs` = 180 × 500ms = **90s** — ou seja, o script nunca teria reportado sucesso mesmo com tudo funcionando. Corrigido para 110s (90s de jogo + folga pra conexão/pareamento), com uma linha de progresso a cada 15s pra não parecer travado.
 
 ## Débitos / Próximos
 
-- **Ainda pendente**: rodar `./scripts/run-tournament-sandbox.sh` numa máquina com Docker de verdade (Docker Hub liberado) pra confirmar a camada de container em si — é o único passo que sobrou e que nenhum ambiente disponível aqui consegue fazer.
 - Herdados: publicação de `protocol`/`sim`/`agents-sdk` no npm; fog com envelhecimento de informação; playtest com pessoas de fora do projeto.
 
 ## Retro

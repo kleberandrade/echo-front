@@ -40,10 +40,25 @@ function decide(unitId, perception) {
   return { movement: { direction: h % 360, speed: 0.5 }, debug: { mode: 'patrol' } };
 }
 
+// Reconexão com backoff: numa disputa real, o container do agente pode subir
+// (e tentar conectar) antes do orquestrador estar de pé — visto na prática
+// no sandbox Docker (sprint-13): um `ECONNREFUSED` isolado, sem retry, deixa
+// o agente permanentemente de fora da partida. `connect()` volta a tentar
+// com backoff (1s, 2s, 3s... até um teto de 5s) em vez de desistir na
+// primeira falha. Sobe até MAX_ATTEMPTS vezes; depois disso, desiste de vez
+// (evita um container preso tentando pra sempre se o orquestrador nunca vier
+// a existir).
+const MAX_ATTEMPTS = 30;
+const MAX_BACKOFF_MS = 5000;
+let attempt = 0;
+let matchEnded = false;
+
 function connect() {
+  attempt += 1;
   const ws = new WebSocket(WS_URL);
 
   ws.on('open', () => {
+    attempt = 0; // conectou — reseta o contador de tentativas pra qualquer reconexão futura
     console.log(`[sandbox-agent] conectado a ${WS_URL} como "${AGENT_NAME}"`);
     ws.send(
       JSON.stringify({
@@ -80,17 +95,34 @@ function connect() {
       );
     }
     if (msg.type === 'match_end') {
+      matchEnded = true;
       console.log(`[sandbox-agent] partida encerrada: ${JSON.stringify(msg.payload)}`);
     }
   });
 
   ws.on('close', () => {
     console.log('[sandbox-agent] conexão encerrada.');
+    scheduleReconnect();
   });
 
   ws.on('error', (err) => {
     console.error('[sandbox-agent] erro de conexão:', err.message);
+    // 'close' é emitido logo em seguida (mesmo quando a conexão nunca chegou
+    // a abrir, como num ECONNREFUSED) — a reconexão fica centralizada lá.
   });
+}
+
+function scheduleReconnect() {
+  if (matchEnded) return; // partida terminou de verdade — não é uma falha, não reconecta
+  if (attempt >= MAX_ATTEMPTS) {
+    console.error(`[sandbox-agent] desistindo após ${attempt} tentativas de conexão.`);
+    process.exit(1);
+  }
+  const delayMs = Math.min(attempt * 1000, MAX_BACKOFF_MS);
+  console.log(
+    `[sandbox-agent] tentando reconectar em ${delayMs}ms (tentativa ${attempt + 1}/${MAX_ATTEMPTS})…`,
+  );
+  setTimeout(connect, delayMs);
 }
 
 connect();

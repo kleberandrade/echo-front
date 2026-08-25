@@ -45,7 +45,7 @@ Métricas de mérito exibidas no leaderboard (não pontuam, mas contam a histór
 - Replays públicos: a comunidade audita comportamentos estranhos (collusion entre agentes do mesmo autor em grupos é tratada por regulamento).
 - **Rate limiting por IP** (sprint-11): `AgentServer` recusa novas conexões acima de um teto por minuto e por conexões simultâneas, por IP — protege o canal ao vivo (WS público) contra flood, independente do sandbox de containers abaixo.
 
-## Sandbox Docker (sprint-11, topologia corrigida na sprint-12)
+## Sandbox Docker (sprint-11, topologia corrigida e verificada de ponta a ponta na sprint-13)
 
 `apps/server/src/tournament/container-orchestrator.ts` implementa o contrato descrito acima: `ContainerOrchestrator.start(spec)` sobe a imagem do competidor numa rede Docker `--internal` (sem rota para a internet) com `--cpus 1 --memory 512m --pids-limit 128 --cap-drop ALL --security-opt no-new-privileges`, injetando `AGENT_WS_URL`/`AGENT_NAME`/`AGENT_TOKEN` via env — sem publicar porta (o container disca para o orquestrador, nunca o contrário). Exemplo de imagem mínima em `apps/server/docker/sandbox-agent/`.
 
