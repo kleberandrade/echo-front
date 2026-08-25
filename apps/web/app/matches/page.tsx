@@ -37,6 +37,7 @@ export default function MatchesPage() {
             <thead>
               <tr className="border-b border-slate-800 text-[10px] tracking-widest text-slate-500">
                 <th className="py-2">PARTIDA</th>
+                <th>MODO</th>
                 <th>CIAN</th>
                 <th className="text-center">PLACAR</th>
                 <th>MAGENTA</th>
@@ -50,6 +51,9 @@ export default function MatchesPage() {
                   <td className="py-2 text-slate-500">
                     {m.matchId}
                     <span className="ml-1 text-slate-700">g{m.game}</span>
+                  </td>
+                  <td className="text-[10px] tracking-wider text-slate-400">
+                    {(m.mode ?? 'data_run').replaceAll('_', ' ')}
                   </td>
                   <td className={m.winner === 'cian' ? 'font-bold text-cian' : 'text-cian/60'}>
                     {m.agents.cian}

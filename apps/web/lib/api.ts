@@ -19,6 +19,7 @@ export interface MatchRow {
   matchId: string;
   seriesId: string;
   game: number;
+  mode?: string;
   seed: string;
   finalHash: string;
   agents: { cian: string; magenta: string };
