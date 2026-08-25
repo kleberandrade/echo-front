@@ -19,6 +19,8 @@ export interface MatchResult {
   matchId: string;
   seriesId: string;
   game: number;
+  /** Modo de disputa da partida. */
+  mode: string;
   seed: string;
   finalHash: string;
   agents: { cian: string; magenta: string }; // nomes

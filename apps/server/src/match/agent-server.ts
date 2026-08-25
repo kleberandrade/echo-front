@@ -111,7 +111,7 @@ export class LiveMatch {
       send(this.seats[team].ws, {
         v: PROTOCOL_VERSION,
         type: 'match_start',
-        payload: { cycle: 0 as const, mode: 'data_run' as const },
+        payload: { cycle: 0 as const, mode: this.state.mode },
       });
     }
     this.sendPerceptions();
@@ -255,6 +255,7 @@ class Series {
             matchId,
             seriesId: this.id,
             game: this.game,
+            mode: finalState.mode,
             seed: match.seed,
             finalHash: replay.finalHash,
             agents: { cian: cian.name, magenta: magenta.name },

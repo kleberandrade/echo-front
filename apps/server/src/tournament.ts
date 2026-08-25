@@ -15,7 +15,7 @@ import {
   tricksterBot,
   type PerceptionBotFn,
 } from '@echo-front/agents-sdk';
-import { DEFAULT_CONFIG, replayFromJsonl, resimulate } from '@echo-front/sim';
+import { DEFAULT_CONFIG, replayFromJsonl, resimulate, type GameMode, type MatchConfig } from '@echo-front/sim';
 import { AgentServer } from './match/agent-server.js';
 
 function arg(name: string, fallback: string): string {
@@ -34,6 +34,15 @@ const ROSTER: Record<string, (team: 'cian' | 'magenta') => PerceptionBotFn> = {
   ghost: (t) => ghostBot(t),
   hunter: () => hunterBot(),
 };
+
+const MODES = arg('modes', 'data_run,core_siege,silent_hunt').split(',') as GameMode[];
+
+function cfgFor(mode: GameMode): MatchConfig {
+  if (mode === 'core_siege') return { ...DEFAULT_CONFIG, mode };
+  if (mode === 'silent_hunt')
+    return { ...DEFAULT_CONFIG, mode, sensors: { ...DEFAULT_CONFIG.sensors, maxPulsesPerMatch: 2 } };
+  return { ...DEFAULT_CONFIG, mode: 'data_run' };
+}
 
 const server = new AgentServer();
 server.configure({
@@ -79,10 +88,14 @@ function playSeries(nameA: string, nameB: string): Promise<void> {
 
 const names = Object.keys(ROSTER);
 const started = performance.now();
-for (let i = 0; i < names.length; i++) {
-  for (let j = i + 1; j < names.length; j++) {
-    console.log(`\n=== série ${names[i]} × ${names[j]} (${GAMES} partidas) ===`);
-    await playSeries(names[i]!, names[j]!);
+for (const mode of MODES) {
+  server.configure({ cfg: cfgFor(mode) });
+  console.log(`\n████ MODO ${mode.toUpperCase()} ████`);
+  for (let i = 0; i < names.length; i++) {
+    for (let j = i + 1; j < names.length; j++) {
+      console.log(`\n=== série ${names[i]} × ${names[j]} (${GAMES} partidas, ${mode}) ===`);
+      await playSeries(names[i]!, names[j]!);
+    }
   }
 }
 wss.close();
