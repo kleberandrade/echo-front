@@ -50,10 +50,10 @@ try {
   await page.screenshot({ path: 'screenshots/replay-end.png' });
 
   const body = await page.textContent('body');
-  if (!/fim: (fragments_delivered|time_up)/.test(body ?? '')) {
+  if (!/VENCEDOR (CIAN|MAGENTA|DRAW)/.test(body ?? '')) {
     throw new Error('placar/fim de partida não renderizado após scrub até o fim');
   }
-  if (!/replay verificado ✓/.test(body ?? '')) {
+  if (!/REPLAY VERIFICADO ✓/.test(body ?? '')) {
     throw new Error('replay não verificou o hash no browser (paridade Node×browser falhou?)');
   }
 

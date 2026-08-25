@@ -4,6 +4,7 @@
  */
 import {
   ARENA_ALPHA,
+  DEFAULT_CONFIG,
   createMatch,
   replayFromJsonl,
   stateHash,
@@ -22,7 +23,8 @@ export interface LoadedReplay {
 
 export function loadReplay(jsonl: string): LoadedReplay {
   const replay = replayFromJsonl(jsonl);
-  const cfg = replay.header.config;
+  // Merge defensivo: replays de versões minor antigas ganham os defaults novos.
+  const cfg = { ...DEFAULT_CONFIG, ...replay.header.config };
   let state = createMatch(replay.header.seed, ARENA_ALPHA, cfg);
   const states: MatchState[] = [state];
   for (const rec of replay.cycles) {

@@ -1,26 +1,33 @@
 'use client';
 
 /**
- * Replay com scrubbing: o sim roda no browser (estados pré-computados por
- * ciclo), timeline, velocidades, event feed clicável, card de unidade com a
- * camada de decisão da IA (campo debug — "72% de confiança…").
+ * Replay com scrubbing e HUD no estilo do concept art: placar com pips no
+ * topo, event feed à direita, card da unidade e action bar sobrepostos à
+ * arena, minimapa no canto e balão de crença da IA sobre a unidade
+ * selecionada ("72% de confiança…").
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_CONFIG, decideWinner } from '@echo-front/sim';
-import ArenaView, { type ViewMode } from './ArenaView';
+import ArenaView, { projPoint, type ViewMode } from './ArenaView';
+import Minimap from './Minimap';
+import {
+  ActionBar,
+  Panel,
+  ScorePips,
+  UnitCard,
+  eventColor,
+  eventIcon,
+  fmtClock,
+  fmtEvent,
+} from './hud';
 import { decisionAt, eventsUpTo, loadReplay, type LoadedReplay } from '../lib/replay';
 
 const SPEEDS = [0.5, 1, 2, 4, 8];
 
-function fmtClock(cyclesLeft: number): string {
-  const s = Math.ceil(cyclesLeft / 2);
-  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-}
-
 export default function ReplayViewer({ replayUrl }: { replayUrl: string }) {
   const [loaded, setLoaded] = useState<LoadedReplay | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [cursor, setCursor] = useState(0); // índice de ciclo (float no play)
+  const [cursor, setCursor] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
   const [mode, setMode] = useState<ViewMode>('all');
@@ -37,7 +44,6 @@ export default function ReplayViewer({ replayUrl }: { replayUrl: string }) {
       .catch((e: Error) => setError(e.message));
   }, [replayUrl]);
 
-  // Loop de reprodução: 2 ciclos/s × velocidade.
   useEffect(() => {
     if (!loaded || !playing) return;
     let raf = 0;
@@ -55,7 +61,6 @@ export default function ReplayViewer({ replayUrl }: { replayUrl: string }) {
     return () => cancelAnimationFrame(raf);
   }, [loaded, playing, speed]);
 
-  // Teclas 1/2/3 trocam a visão; espaço pausa.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === '1') setMode('all');
@@ -76,16 +81,13 @@ export default function ReplayViewer({ replayUrl }: { replayUrl: string }) {
   const progress = cursor - idx;
 
   const feed = useMemo(
-    () => (loaded ? eventsUpTo(loaded.states, idx + 1).slice(0, 28) : []),
+    () => (loaded ? eventsUpTo(loaded.states, idx + 1).slice(0, 26) : []),
     [loaded, idx],
   );
 
-  if (error) {
-    return <p className="p-8 font-mono text-sm text-red-400">{error}</p>;
-  }
-  if (!loaded || !state || !prevState) {
+  if (error) return <p className="p-8 font-mono text-sm text-red-400">{error}</p>;
+  if (!loaded || !state || !prevState)
     return <p className="p-8 font-mono text-sm text-slate-500">carregando replay…</p>;
-  }
 
   const selectedUnit = selected ? state.units.find((u) => u.id === selected) : undefined;
   const decision = selected ? decisionAt(loaded.replay, idx, selected) : undefined;
@@ -96,86 +98,48 @@ export default function ReplayViewer({ replayUrl }: { replayUrl: string }) {
     setCursor(v);
   };
 
+  // Balão de crença sobre a unidade selecionada.
+  let belief: { x: number; y: number; text: string } | undefined;
+  if (selectedUnit && decision?.debug) {
+    const dbg = decision.debug as Record<string, unknown>;
+    const conf = Object.entries(dbg).find(([k, v]) => typeof v === 'number' && /conf/i.test(k));
+    const mode_ = dbg.mode !== undefined ? String(dbg.mode) : (decision.action ?? '');
+    const text = conf
+      ? `${Math.round((conf[1] as number) * 100)}% · ${mode_.replaceAll('_', ' ')}`
+      : mode_.replaceAll('_', ' ');
+    if (text) {
+      const [sx, sy] = projPoint(selectedUnit.x / 1000, selectedUnit.y / 1000);
+      belief = { x: sx, y: sy - 46, text };
+    }
+  }
+
   return (
-    <div className="mx-auto max-w-[1400px] px-4 pb-8 font-mono">
+    <div className="mx-auto max-w-[1420px] px-4 pb-6 font-mono">
       {/* Placar */}
-      <div className="flex items-center justify-center gap-6 py-3 text-sm">
-        <span className="tracking-[0.3em] text-cian">CIAN</span>
-        <span className="text-3xl font-bold text-cian">{state.score.cian}</span>
-        <div className="text-center">
-          <div className="text-xl">{fmtClock(DEFAULT_CONFIG.totalCycles - state.cycle)}</div>
-          <div className="text-[10px] text-slate-500">
-            ciclo {state.cycle}/{DEFAULT_CONFIG.totalCycles}
-            {loaded.verified ? ' · replay verificado ✓' : ' · HASH DIVERGENTE ✗'}
-          </div>
-        </div>
-        <span className="text-3xl font-bold text-magenta">{state.score.magenta}</span>
-        <span className="tracking-[0.3em] text-magenta">MAGENTA</span>
+      <div className="flex items-center justify-center gap-5 py-3 text-sm">
+        <span className="tracking-[0.35em] text-cian">CIAN</span>
+        <ScorePips score={state.score.cian} color="#22d3ee" />
+        <Panel className="px-4 py-1 text-center">
+          <span className="text-2xl font-bold text-cian">{state.score.cian}</span>
+          <span className="mx-3 text-xl text-slate-200">{fmtClock(DEFAULT_CONFIG.totalCycles - state.cycle)}</span>
+          <span className="text-2xl font-bold text-magenta">{state.score.magenta}</span>
+          <p className="text-[9px] tracking-widest text-slate-500">
+            CICLO {state.cycle}/{DEFAULT_CONFIG.totalCycles}
+            {loaded.verified ? ' · REPLAY VERIFICADO ✓' : ' · HASH DIVERGENTE ✗'}
+          </p>
+        </Panel>
+        <ScorePips score={state.score.magenta} color="#e64ce6" flip />
+        <span className="tracking-[0.35em] text-magenta">MAGENTA</span>
         {ended && (
-          <span className="ml-4 border border-amber-400/50 px-2 py-1 text-xs text-amber">
-            fim: {state.endReason} · vencedor {decideWinner(state)}
+          <span className="border border-amber-400/50 px-2 py-1 text-[10px] text-amber">
+            {fmtEvent(state.endReason ?? '')} · VENCEDOR {decideWinner(state).toUpperCase()}
           </span>
         )}
       </div>
 
-      <div className="flex gap-4">
-        {/* Card da unidade */}
-        <aside className="w-56 shrink-0 space-y-3 text-xs">
-          <div className="border border-slate-800 bg-black/40 p-3">
-            <p className="mb-2 tracking-widest text-slate-400">UNIDADE</p>
-            {selectedUnit ? (
-              <>
-                <p className={selectedUnit.team === 'cian' ? 'text-cian' : 'text-magenta'}>
-                  {selectedUnit.id}
-                </p>
-                <p className="mt-2 text-slate-400">
-                  integrity {selectedUnit.integrity} · energy {selectedUnit.energy}
-                </p>
-                <p className="text-slate-400">
-                  speed {(selectedUnit.speed / 1000).toFixed(1)} · heading {selectedUnit.heading}°
-                </p>
-                <p className="text-slate-400">
-                  {selectedUnit.carryingFragment ? '◆ carregando fragmento' : 'sem fragmento'}
-                  {selectedUnit.hiddenCycles > 0 ? ' · oculto' : ''}
-                </p>
-              </>
-            ) : (
-              <p className="text-slate-600">clique numa unidade</p>
-            )}
-          </div>
-          <div className="border border-slate-800 bg-black/40 p-3">
-            <p className="mb-2 tracking-widest text-slate-400">DECISÃO DA IA</p>
-            {decision ? (
-              <>
-                <p className="text-slate-300">
-                  {decision.action ?? 'mover'}
-                  {decision.movement
-                    ? ` → ${decision.movement.direction ?? '·'}° @${decision.movement.speed ?? '·'}`
-                    : ''}
-                </p>
-                {decision.message_to_team && (
-                  <p className="mt-1 text-slate-400">✉ {decision.message_to_team}</p>
-                )}
-                {decision.debug && (
-                  <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-[10px] text-emerald-300/80">
-                    {JSON.stringify(decision.debug, null, 1)}
-                  </pre>
-                )}
-              </>
-            ) : (
-              <p className="text-slate-600">sem decisão neste ciclo</p>
-            )}
-          </div>
-          <div className="border border-slate-800 bg-black/40 p-3 text-[10px] text-slate-500">
-            <p>1 visão geral · 2 time cian · 3 time magenta · espaço pausa</p>
-            <p className="mt-1">
-              modo atual: <span className="text-slate-300">{mode}</span>
-            </p>
-          </div>
-        </aside>
-
-        {/* Arena */}
-        <div className="min-w-0 flex-1 border border-slate-800 bg-black/30">
+      <div className="flex gap-3">
+        {/* Arena com overlays */}
+        <div className="relative min-w-0 flex-1 border border-slate-800/70 bg-black/30">
           <ArenaView
             state={state}
             prevState={prevState}
@@ -184,26 +148,67 @@ export default function ReplayViewer({ replayUrl }: { replayUrl: string }) {
             selectedUnitId={selected}
             onSelectUnit={setSelected}
           />
+          <p className="pointer-events-none absolute left-3 top-2 text-[10px] tracking-[0.35em] text-slate-500">
+            ECHO<span className="text-cian">//</span>FRONT · AI SPECTATOR MODE
+          </p>
+
+          {belief && (
+            <div
+              className="pointer-events-none absolute -translate-x-1/2 border border-emerald-400/40 bg-black/80 px-2 py-[2px] text-[10px] text-emerald-300"
+              style={{ left: belief.x, top: belief.y }}
+            >
+              {belief.text}
+            </div>
+          )}
+
+          {selectedUnit && (
+            <div className="absolute bottom-3 left-3">
+              <UnitCard unit={selectedUnit} decision={decision} />
+            </div>
+          )}
+
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
+            <ActionBar unit={selectedUnit} decision={decision} />
+          </div>
+
+          <div className="absolute bottom-3 right-3 flex flex-col items-end gap-1">
+            <Panel className="p-1">
+              <Minimap state={state} />
+            </Panel>
+            <div className="flex items-center gap-2 text-[9px] tracking-widest text-slate-500">
+              <span>⬡ FOG OF WAR</span>
+              {(['all', 'cian', 'magenta'] as const).map((m, i) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`border px-1 ${mode === m ? 'border-cyan-400/60 text-cian' : 'border-slate-800 text-slate-600'}`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Event feed */}
-        <aside className="w-60 shrink-0 border border-slate-800 bg-black/40 p-3 text-xs">
-          <p className="mb-2 tracking-widest text-slate-400">EVENT FEED</p>
-          <ul className="max-h-[480px] space-y-1 overflow-y-auto">
+        <Panel className="w-64 shrink-0 p-3 text-[11px]">
+          <p className="mb-2 tracking-[0.3em] text-slate-400">EVENT FEED</p>
+          <ul className="max-h-[500px] space-y-[6px] overflow-y-auto">
             {feed.map(([c, e], i) => (
               <li key={`${c}-${e}-${i}`}>
-                <button
-                  onClick={() => seek(c)}
-                  className={`text-left hover:underline ${
-                    e.includes('cian') ? 'text-cian' : e.includes('magenta') ? 'text-magenta' : e.includes('fragment') ? 'text-amber' : 'text-slate-400'
-                  }`}
-                >
-                  <span className="text-slate-600">{String(c).padStart(3, '0')}</span> {e}
+                <button onClick={() => seek(c)} className="flex items-start gap-2 text-left hover:brightness-150">
+                  <span className="mt-[1px] text-sm" style={{ color: eventColor(e) }}>
+                    {eventIcon(e)}
+                  </span>
+                  <span>
+                    <span className="mr-1 text-slate-600">{fmtClock(DEFAULT_CONFIG.totalCycles - c)}</span>
+                    <span style={{ color: eventColor(e) }}>{fmtEvent(e).toUpperCase()}</span>
+                  </span>
                 </button>
               </li>
             ))}
           </ul>
-        </aside>
+        </Panel>
       </div>
 
       {/* Timeline */}
