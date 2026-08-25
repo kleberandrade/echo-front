@@ -6,6 +6,7 @@
 import type { DecisionPayload, Team } from '@echo-front/protocol';
 import { ARENA_ALPHA, DEFAULT_CONFIG, type MatchConfig } from '@echo-front/sim';
 import type { PerceptionBotFn } from './bots.js';
+import { siegeRoutine } from './siege.js';
 
 export const GHOST_COMPOSITION = (team: Team): MatchConfig['composition'][Team] =>
   team ? ['phantom', 'runner'] : ['phantom', 'runner'];
@@ -34,8 +35,10 @@ export function ghostBot(team: Team): PerceptionBotFn {
       ? [ARENA_ALPHA.cores.magenta.x, ARENA_ALPHA.cores.magenta.y]
       : [ARENA_ALPHA.cores.cian.x, ARENA_ALPHA.cores.cian.y];
   const spawns = ARENA_ALPHA.fragmentSpawns.map((p): [number, number] => [p.x, p.y]);
+  const siege = siegeRoutine(team);
 
   return (unitId, p, cycle) => {
+    if (p.objective.mode === 'core_siege') return siege(unitId, p, cycle);
     const pos = p.self.position;
     const isPhantom = p.self.class === 'phantom';
 
@@ -95,8 +98,7 @@ export function ghostBot(team: Team): PerceptionBotFn {
     }
 
     // Patrulha devagar (phantom quase inaudível a 0,5).
-    const target =
-      spawns[(Math.floor(cycle / 14) + (unitId.length % spawns.length)) % spawns.length]!;
+    const target = spawns[(Math.floor(cycle / 14) + (unitId.length % spawns.length)) % spawns.length]!;
     return {
       movement: { direction: deg(pos, target), speed: isPhantom ? 0.5 : 0.7 },
       debug: { mode: 'silent_patrol', target },

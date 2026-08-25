@@ -27,6 +27,7 @@ export interface AgentOptions {
 export { hunterBot, wandererBot, type PerceptionBotFn } from './bots.js';
 export { courierBot, tricksterBot } from './objective-bots.js';
 export { ghostBot, ghostConfig } from './ghost-bot.js';
+export { siegeRoutine } from './siege.js';
 
 export class Agent {
   private ws: WebSocket | undefined;
@@ -72,9 +73,7 @@ export class Agent {
   }
 
   sendDecision(unitId: string, cycle: number, payload: DecisionPayload): void {
-    this.ws?.send(
-      JSON.stringify({ v: PROTOCOL_VERSION, type: 'decision', unitId, cycle, payload }),
-    );
+    this.ws?.send(JSON.stringify({ v: PROTOCOL_VERSION, type: 'decision', unitId, cycle, payload }));
   }
 
   close(): void {

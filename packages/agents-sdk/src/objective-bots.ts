@@ -5,6 +5,7 @@
 import type { DecisionPayload, Team } from '@echo-front/protocol';
 import { ARENA_ALPHA } from '@echo-front/sim';
 import type { PerceptionBotFn } from './bots.js';
+import { siegeRoutine } from './siege.js';
 
 function deg(from: [number, number], to: [number, number]): number {
   const d = Math.round((Math.atan2(to[1] - from[1], to[0] - from[0]) * 180) / Math.PI);
@@ -22,8 +23,10 @@ function dist(a: [number, number], b: [number, number]): number {
 export function courierBot(team: Team): PerceptionBotFn {
   const core: [number, number] = [ARENA_ALPHA.cores[team].x, ARENA_ALPHA.cores[team].y];
   const spawns = ARENA_ALPHA.fragmentSpawns.map((p): [number, number] => [p.x, p.y]);
+  const siege = siegeRoutine(team);
 
   return (unitId, p, cycle) => {
+    if (p.objective.mode === 'core_siege') return siege(unitId, p, cycle);
     const pos = p.self.position;
 
     // Contato próximo sem carga → abre distância (evita o strike do caçador).
@@ -75,10 +78,12 @@ export function courierBot(team: Team): PerceptionBotFn {
     }
 
     // Observer sem pista: pulsa para achar fragmentos (paga a exposição).
+    // silent_hunt: respeita a cota informada em objective.pulses_left.
     if (
       p.self.class === 'observer' &&
       (p.self.cooldowns['pulse_scan'] ?? 0) === 0 &&
-      p.self.energy > 60
+      p.self.energy > 60 &&
+      (p.objective.pulses_left === undefined || p.objective.pulses_left > 0)
     ) {
       return { movement: { speed: 0.4 }, action: 'pulse_scan', debug: { mode: 'find_pulse' } };
     }
@@ -104,8 +109,10 @@ export function tricksterBot(team: Team): PerceptionBotFn {
       ? [ARENA_ALPHA.cores.magenta.x, ARENA_ALPHA.cores.magenta.y]
       : [ARENA_ALPHA.cores.cian.x, ARENA_ALPHA.cores.cian.y];
   const spawns = ARENA_ALPHA.fragmentSpawns.map((p): [number, number] => [p.x, p.y]);
+  const siege = siegeRoutine(team);
 
   return (unitId, p, cycle) => {
+    if (p.objective.mode === 'core_siege') return siege(unitId, p, cycle);
     const pos = p.self.position;
     const isRunner = p.self.class === 'runner';
 
@@ -189,7 +196,12 @@ export function tricksterBot(team: Team): PerceptionBotFn {
     }
 
     // Observer mapeia com pulso quando cheio de energia (pagando o preço).
-    if (!isRunner && (p.self.cooldowns['pulse_scan'] ?? 0) === 0 && p.self.energy > 90) {
+    if (
+      !isRunner &&
+      (p.self.cooldowns['pulse_scan'] ?? 0) === 0 &&
+      p.self.energy > 90 &&
+      (p.objective.pulses_left === undefined || p.objective.pulses_left > 0)
+    ) {
       return { movement: { speed: 0.3 }, action: 'pulse_scan', debug: { mode: 'sweep_pulse' } };
     }
 

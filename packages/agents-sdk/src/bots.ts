@@ -112,7 +112,10 @@ export function hunterBot(): PerceptionBotFn {
         },
       };
     }
-    const canPulse = (p.self.cooldowns['pulse_scan'] ?? 0) === 0 && p.self.energy > 60;
+    const canPulse =
+      (p.self.cooldowns['pulse_scan'] ?? 0) === 0 &&
+      p.self.energy > 60 &&
+      (p.objective.pulses_left === undefined || p.objective.pulses_left > 0);
     return {
       movement: { direction: (salt * 3 + cycle * 17) % 360, speed: 0.6 },
       ...(canPulse ? { action: 'pulse_scan' as const } : {}),
