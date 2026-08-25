@@ -70,10 +70,14 @@ export const ARENA_ALPHA: MapDef = {
     cian: [
       { x: 5, y: 16 },
       { x: 5, y: 20 },
+      { x: 3, y: 14 },
+      { x: 3, y: 22 },
     ],
     magenta: [
       { x: 58, y: 19 },
       { x: 58, y: 15 },
+      { x: 60, y: 21 },
+      { x: 60, y: 13 },
     ],
   },
 };

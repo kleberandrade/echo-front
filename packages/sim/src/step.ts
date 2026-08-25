@@ -15,7 +15,7 @@ import {
   type Unit,
 } from './types.js';
 
-export const SIM_VERSION = '0.3.0';
+export const SIM_VERSION = '0.4.0';
 
 // ---------------------------------------------------------------------------
 // Estado inicial
@@ -26,34 +26,34 @@ export function createMatch(
   map: MapDef,
   cfg: MatchConfig = DEFAULT_CONFIG,
 ): MatchState {
-  const mkUnit = (team: 'cian' | 'magenta', idx: number, cls: 'observer' | 'runner'): Unit => {
-    const spawn = map.unitSpawns[team][idx]!;
-    const stats = cfg.classes[cls];
-    return {
-      id: `${team}_${cls}_1`,
-      team,
-      class: cls,
-      x: toFixed(spawn.x),
-      y: toFixed(spawn.y),
-      heading: team === 'cian' ? 0 : 180,
-      speed: 0,
-      energy: Math.min(80, stats.maxEnergy),
-      integrity: stats.maxIntegrity,
-      alive: true,
-      carryingFragment: false,
-      cooldowns: {},
-      hiddenCycles: 0,
-      boosting: false,
-      energySpent: 0,
-    };
-  };
-
-  const units = [
-    mkUnit('cian', 0, 'observer'),
-    mkUnit('cian', 1, 'runner'),
-    mkUnit('magenta', 0, 'observer'),
-    mkUnit('magenta', 1, 'runner'),
-  ].sort((a, b) => (a.id < b.id ? -1 : 1));
+  const units: Unit[] = [];
+  for (const team of ['cian', 'magenta'] as const) {
+    const counters: Record<string, number> = {};
+    cfg.composition[team].forEach((cls, idx) => {
+      const spawn = map.unitSpawns[team][idx];
+      if (!spawn) throw new Error(`sem spawn ${idx} para ${team} em ${map.id}`);
+      counters[cls] = (counters[cls] ?? 0) + 1;
+      const stats = cfg.classes[cls];
+      units.push({
+        id: `${team}_${cls}_${counters[cls]}`,
+        team,
+        class: cls,
+        x: toFixed(spawn.x),
+        y: toFixed(spawn.y),
+        heading: team === 'cian' ? 0 : 180,
+        speed: 0,
+        energy: Math.min(80, stats.maxEnergy),
+        integrity: stats.maxIntegrity,
+        alive: true,
+        carryingFragment: false,
+        cooldowns: {},
+        hiddenCycles: 0,
+        boosting: false,
+        energySpent: 0,
+      });
+    });
+  }
+  units.sort((a, b) => (a.id < b.id ? -1 : 1));
 
   return {
     simVersion: SIM_VERSION,
@@ -65,6 +65,7 @@ export function createMatch(
     fragments: [],
     decoys: [],
     noises: [],
+    heatTrails: [],
     messages: [],
     pulses: [],
     cycleEvents: ['match_start'],
@@ -340,6 +341,15 @@ export function step(
     }
     for (const decoy of s.decoys) decoy.lifeCycles -= 1;
     s.decoys = s.decoys.filter((d) => d.lifeCycles > 0);
+
+    // Rastros de calor: decaem; unidades em movimento deixam calor residual.
+    for (const t of s.heatTrails) t.cyclesLeft -= 1;
+    s.heatTrails = s.heatTrails.filter((t) => t.cyclesLeft > 0);
+    for (const unit of s.units) {
+      if (unit.alive && unit.speed > 0 && unit.hiddenCycles === 0) {
+        s.heatTrails.push({ x: unit.x, y: unit.y, cyclesLeft: cfg.sensors.heatTrailCycles });
+      }
+    }
   }
 
   // 6. Relógio e fim de partida.

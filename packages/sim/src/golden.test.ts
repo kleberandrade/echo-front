@@ -14,11 +14,11 @@ import { replayFromJsonl, resimulate } from './match.js';
 const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures');
 
 const GOLDEN = [
-  // Regeneradas em 2026-08-25 (Sprint 3): estado ganhou fragments/decoys/
-  // noises e novos campos de unidade — mudança intencional (sprint-03).
-  { file: 'golden-alpha.replay.jsonl', hash: '53e940e83eeec5bf', cycles: 60 },
-  { file: 'golden-beta.replay.jsonl', hash: 'ce16e507d6ca030e', cycles: 90 },
-  { file: 'golden-gamma.replay.jsonl', hash: '59109c22dd79bbf3', cycles: 180 },
+  // Regeneradas em 2026-08-25 (Sprint 5): estado ganhou heatTrails (sensor
+  // térmico) — mudança intencional documentada na sprint-05.
+  { file: 'golden-alpha.replay.jsonl', hash: '0378b50b5e7b7712', cycles: 60 },
+  { file: 'golden-beta.replay.jsonl', hash: '4988e73bf439e19a', cycles: 90 },
+  { file: 'golden-gamma.replay.jsonl', hash: '33cd5410cfc487a1', cycles: 180 },
 ];
 
 describe('golden replays', () => {

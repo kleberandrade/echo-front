@@ -27,6 +27,12 @@ export interface SensorConfig {
   radarCost: number;
   radarCostObserver: number;
   radarCooldownCycles: number;
+  thermalRange: number;
+  thermalMinIntensity: number;
+  /** Multiplicador por obstáculo atravessado (térmico atravessa parcialmente). */
+  thermalObstacleFactor: number;
+  /** Ciclos que um rastro de calor persiste onde a unidade passou. */
+  heatTrailCycles: number;
 }
 
 export interface ActionsConfig {
@@ -76,6 +82,8 @@ export interface MatchConfig {
   actions: ActionsConfig;
   fragments: FragmentsConfig;
   classes: Record<UnitClass, ClassStats>;
+  /** Composição de cada time, em ordem de spawn (máx. = spawns do mapa). */
+  composition: Record<Team, UnitClass[]>;
 }
 
 export const DEFAULT_CONFIG: MatchConfig = {
@@ -97,6 +105,10 @@ export const DEFAULT_CONFIG: MatchConfig = {
     radarCost: 25,
     radarCostObserver: 15,
     radarCooldownCycles: 5,
+    thermalRange: 20,
+    thermalMinIntensity: 0.05,
+    thermalObstacleFactor: 0.5,
+    heatTrailCycles: 3,
   },
   actions: {
     decoyCost: 20,
@@ -111,6 +123,10 @@ export const DEFAULT_CONFIG: MatchConfig = {
     strikeDamage: 20,
     strikeRange: 3,
     strikeNoise: 0.9,
+  },
+  composition: {
+    cian: ['observer', 'runner'],
+    magenta: ['observer', 'runner'],
   },
   fragments: {
     deliveriesToWin: 3,
@@ -198,6 +214,13 @@ export interface Noise {
   intensity: number;
 }
 
+/** Rastro de calor residual deixado por unidades em movimento. */
+export interface HeatTrail {
+  x: Fixed;
+  y: Fixed;
+  cyclesLeft: number;
+}
+
 export interface MatchState {
   simVersion: string;
   cycle: number;
@@ -208,6 +231,7 @@ export interface MatchState {
   fragments: Fragment[];
   decoys: Decoy[];
   noises: Noise[];
+  heatTrails: HeatTrail[];
   messages: QueuedMessage[];
   pulses: RadarPulse[];
   /** Eventos globais do ciclo corrente (limpos no início de cada ciclo). */

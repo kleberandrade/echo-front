@@ -17,7 +17,7 @@ import type {
   VisualReadingSchema,
 } from '@echo-front/protocol';
 import type { z } from 'zod';
-import { fromFixed, type Fixed } from './fixed.js';
+import { fromFixed, toFixed, type Fixed } from './fixed.js';
 import type { MapDef } from './map.js';
 import { deriveStream, nextInt } from './rng.js';
 import { inInterference } from './step.js';
@@ -151,6 +151,45 @@ function soundFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig):
 }
 
 // ---------------------------------------------------------------------------
+// Térmico (Sprint 5): detecta ocultos, mas confunde com torres e rastros.
+// ---------------------------------------------------------------------------
+
+type ThermalReading = { intensity: number; direction: number };
+
+function thermalFor(unit: Unit, state: MatchState, map: MapDef, cfg: MatchConfig): ThermalReading[] {
+  const sc = cfg.sensors;
+  const out: ThermalReading[] = [];
+
+  const sense = (sx: Fixed, sy: Fixed, base: number): void => {
+    if (base <= 0) return;
+    const dist = distanceUnits(unit.x, unit.y, sx, sy);
+    if (dist > sc.thermalRange || dist < 0.5) return;
+    const crossed = obstaclesCrossed(map, unit.x, unit.y, sx, sy);
+    const attenuated =
+      base * (1 - dist / sc.thermalRange) * Math.pow(sc.thermalObstacleFactor, crossed);
+    const intensity = Math.round(attenuated * 100) / 100;
+    if (intensity < sc.thermalMinIntensity) return;
+    out.push({ intensity, direction: directionDeg(unit.x, unit.y, sx, sy) });
+  };
+
+  // Unidades: atividade gera calor — INCLUSIVE ocultas (contramedida do hide).
+  for (const other of state.units) {
+    if (other.id === unit.id || !other.alive) continue;
+    const activity = 0.3 + (0.5 * other.speed) / 1000 + (other.boosting ? 0.2 : 0);
+    sense(other.x, other.y, other.hiddenCycles > 0 ? 0.35 : activity);
+  }
+  // Rastros residuais de quem passou (3 ciclos).
+  for (const t of state.heatTrails) {
+    sense(t.x, t.y, 0.15 * (t.cyclesLeft / cfg.sensors.heatTrailCycles));
+  }
+  // Torres de energia: fontes fixas — falso positivo intencional.
+  for (const tower of map.energyTowers) {
+    sense(toFixed(tower.x), toFixed(tower.y), 0.5);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Radar
 // ---------------------------------------------------------------------------
 
@@ -280,7 +319,7 @@ export function buildPerception(
     },
     sensors: {
       visual: visualFor(unit, state, map, cfg),
-      thermal: [], // Sprint 5
+      thermal: thermalFor(unit, state, map, cfg),
       sound: soundFor(unit, state, map, cfg),
       radar: radarFor(unit, state, cfg),
     },
