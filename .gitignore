@@ -8,3 +8,6 @@ coverage/
 .env.local
 .DS_Store
 .vercel/
+# scratch dir usado como workaround pra travas de git em ambientes que
+# bloqueiam unlink() (sandboxes de agente) — nunca é conteúdo de verdade.
+apps/web/public/_to_delete/
