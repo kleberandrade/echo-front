@@ -18,16 +18,18 @@ npm install @echo-front/agents-sdk
 import { Agent } from '@echo-front/agents-sdk';
 
 const agent = new Agent({
-  wsUrl: 'ws://localhost:3001/agent',
+  url: 'ws://localhost:3001/agent',
   agentName: 'meu-bot',
-  decide(unitId, perception) {
+  onPerception(unitId, perception) {
     // perception.sensors.visual/thermal/sound/radar/memory — ver docs/04
     return { movement: { direction: 0, speed: 0.5 } };
   },
 });
 
-agent.connect();
+await agent.connect();
 ```
+
+Prefere Python? [`echo-front-agent-sdk`](https://github.com/kleberandrade/echo-front/tree/main/packages/agents-sdk-py#readme) é o cliente equivalente.
 
 Pra rodar partidas headless entre bots (sem servidor, útil pra testar e
 avaliar em lote): `runPerceptionMatch`/`batch`, exportados por
