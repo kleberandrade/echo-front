@@ -16,7 +16,8 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "match": "node dist/harness.js",
-    "batch": "node dist/batch.js"
+    "batch": "node dist/batch.js",
+    "agent:check": "node dist/check.js"
   },
   "dependencies": {
     "@echo-front/protocol": "workspace:*",
