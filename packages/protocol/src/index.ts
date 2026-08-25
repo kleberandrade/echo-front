@@ -4,7 +4,7 @@ import { z } from 'zod';
  * ECHO//FRONT — protocolo agente ↔ servidor.
  * Referência humana: docs/04-protocolo-agente.md
  */
-export const PROTOCOL_VERSION = '0.4.0';
+export const PROTOCOL_VERSION = '0.5.0';
 
 // ---------------------------------------------------------------------------
 // Primitivas
@@ -131,6 +131,8 @@ export const ObjectiveSchema = z.object({
   score: z.object({ cian: z.number().int(), magenta: z.number().int() }),
   time_remaining_cycles: z.number().int().nonnegative(),
   known_fragments: z.array(KnownFragmentSchema),
+  /** silent_hunt: pulsos restantes desta unidade (ausente = ilimitado). */
+  pulses_left: z.number().int().nonnegative().optional(),
 });
 
 export const PerceptionPayloadSchema = z.object({
