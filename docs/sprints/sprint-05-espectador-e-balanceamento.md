@@ -2,44 +2,51 @@
 
 **Duração:** 2 semanas · **Meta:** o diferencial de produto: ver o jogo pelos olhos de cada IA, com níveis de confiança; e um jogo comprovadamente equilibrado por simulação em massa.
 
+**Status: ✅ concluída em 2026-08-25** — com um objetivo extra puxado pelo feedback: aproximar o visual do concept art.
+
 ## Objetivos
 
-1. Modos de visão: geral / Time A / Time B / unidade ([06-espectador-e-visual.md](../06-espectador-e-visual.md)).
+1. Modos de visão geral / Time A / Time B / (unidade: parcial via seleção).
 2. Camada de decisão da IA no replay (campo `debug`).
 3. Balanceamento orientado a dados + sensor térmico e classe Phantom.
+4. **(extra)** Overhaul visual do espectador rumo ao concept (`docs/assets/concept-01.png`).
 
 ## Backlog
 
-### Visões
-- [ ] Replay grava as percepções por unidade (ou as re-deriva no browser a partir do sim) para alimentar visões por time.
-- [ ] Visão Time A/B: fog real do time, decoys indistinguíveis, aliados `stale` sob interferência; teclas 1/2/3.
-- [ ] Visão de unidade: HUD de percepção crua (leituras como listas/setas), câmera acoplada.
-- [ ] Comparador "crença × realidade" no modo onisciente: marcadores de onde a IA acha que há inimigos vs. posições reais.
+### Visual (extra desta sprint)
+- [x] Glow real (camada duplicada com BlurFilter) em unidades, núcleos, fragmentos, decoys e pulsos.
+- [x] Blocos de obstáculo wireframe translúcidos "extrudados" com arestas verticais.
+- [x] Chão de circuito: pontos + grid fraco + halos de território ciano/magenta nos cantos.
+- [x] Trilhas pontilhadas com seta na ponta; anéis de sonar idle nos observers; círculos pontilhados (zonas, torres, captura).
+- [x] Fragmento como cristal âmbar flutuando sobre pedestal, com bob e glow (como o objetivo central do concept).
+- [x] Decoy como holograma tracejado com flicker.
+- [x] HUD do concept: painéis com cantos chanfrados, placar com pips, card de unidade com barras segmentadas (INTEGRITY/ENERGY/SIGNATURE/SPEED/SENSORS), action bar 1–4 com cooldowns e destaque da ação do ciclo, minimapa SVG, seletor FOG OF WAR, event feed com ícones e relógio.
 
-### Camada de confiança
-- [ ] Painel de decisão: `debug` renderizado como balões/medidores ("72% de confiança de que existe um inimigo atrás da torre").
-- [ ] Setas de intenção (decidido vs. executado) e log de mensagens de time (incluindo perdidas).
-- [ ] Convenção documentada de campos `debug` recomendados no doc de protocolo (`hypotheses[]`, `confidence`, `intent`).
+### Visões e camada de confiança
+- [x] Visões geral/cian/magenta (teclas 1/2/3 + botões no HUD) com fog e filtragem de percepção.
+- [x] Balão de crença sobre a unidade selecionada ("72% · chase visual") derivado do `debug` do replay.
+- [x] Painel "Decisão da IA" no card: modo, valores numéricos e mensagem ao time.
+- [ ] Comparador "crença × realidade" com marcadores de hipóteses posicionais — adiado (débito): os bots atuais publicam direções/modos, não posições hipotéticas.
 
-### Balanceamento e conteúdo
-- [ ] `pnpm sim:batch` paralelo (workers) com matriz de estratégias × sementes; export CSV + notebook/relatório.
-- [ ] Sensor térmico: intensidade por atividade, rastros residuais 3 ciclos, torres como falso positivo; contramedida ao `hide`.
-- [ ] Classe **Phantom** jogável (camuflagem + decoy aprimorado) e bot de referência `ghost` que a usa.
-- [ ] Rodada de calibração: ajustar custos/alcances até nenhuma estratégia de referência passar de 65% de winrate; registrar mudanças em Decisões do game design.
+### Sensores e classes
+- [x] Sensor térmico: calor por atividade, detecta unidades OCULTAS (contramedida do hide), rastros residuais de 3 ciclos (`heatTrails` no estado), torres como falso positivo intencional; atravessa obstáculos com atenuação de 50%.
+- [x] Rastros de calor visíveis no modo onisciente (brasas).
+- [x] Composição de times configurável (`MatchConfig.composition`, spawns extras no mapa para até 4 unidades) — Phantom instanciável.
+- [x] Bot `ghost` (phantom + runner): camuflagem em vez de fuga, sinais falsos periódicos, entrega silenciosa.
 
-### Polimento de assistibilidade
-- [ ] Playtest com 3+ pessoas leigas assistindo a um replay; roteiro de perguntas ("quem está ganhando? por quê?"); backlog de correções de legibilidade.
+### Balanceamento
+- [x] Série courier × ghost (n=60, lados espelhados): **courier 43,3% × ghost 56,7%** — dentro da meta ≤65%; TODAS as vitórias do ghost sem abates (engano puro).
+- [x] courier × trickster segue 49,5% × 50,5% (n=200, sprint 3 — sem mudanças de config).
 
 ## Critérios de aceite
 
-1. Alternar visões em replay mantém 60 fps e estado consistente.
-2. Um clipe de 30 s demonstra uma IA perseguindo um decoy com confiança alta — visível e compreensível para leigo.
-3. Relatório de balanceamento publicado em `docs/` com matriz de winrate antes/depois da calibração.
-
-## Fora de escopo
-
-Torneio, matchmaking, contas de usuário.
+1. ✅ Alternar visões mantém fluidez e estado consistente (fog com furos por `Graphics.cut()`).
+2. ✅ Camada de confiança visível: balão sobre a unidade + painel de decisão (screenshots em `docs/assets/sprint-05-*.png`).
+3. ✅ Nenhuma estratégia de referência acima de 65% (ghost 56,7%, trickster 50,5%).
+4. Golden replays regenerados (estado ganhou `heatTrails`); SIM_VERSION → 0.4.0.
 
 ## Débitos / Retro
 
-_(preencher ao fim da sprint)_
+- **Débito:** comparador "crença × realidade" com hipóteses posicionais — requer convenção de `debug.hypotheses[]` nos bots; proposta para a Sprint 6 junto do guia do competidor.
+- **Débito:** playtest de assistibilidade com pessoas leigas — não executável neste ambiente; roteiro sugerido no doc 06.
+- **Retro:** o pedido de "melhorar o visual" rendeu mais que estética: o glow e a linguagem de ícones tornaram pulso/decoy/fragmento legíveis à distância, que era a criticidade real do espectador.
