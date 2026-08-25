@@ -1,0 +1,15 @@
+---
+description: Convenções globais do monorepo ECHO//FRONT
+---
+
+# ECHO//FRONT
+
+Monorepo pnpm + Turborepo. Leia `AGENTS.md` e `docs/` antes de mudar comportamento.
+
+- Docs em português; identificadores, eventos e campos de protocolo em inglês.
+- TypeScript strict (`tsconfig.base.json`). Prettier: aspas simples, `;`, trailing comma, printWidth 100.
+- `packages/sim` é puro e determinístico. Partidas válidas rodam no server, nunca no cliente.
+- `packages/protocol` é a fonte canônica do contrato. Doc humano: `docs/04-protocolo-agente.md`.
+- Testes Vitest em lógica pura. Commits: Conventional Commits (`feat(sim): ...`).
+- Escopos: `web`, `server`, `sim`, `protocol`, `agents-sdk`, `docs`, `ci`, `repo`.
+- Não inventar APIs de protocolo nem quebrar golden replays sem atualizar fixtures e docs.

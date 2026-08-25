@@ -1,0 +1,32 @@
+---
+description: Regras invioláveis do núcleo determinístico
+alwaysApply: false
+paths: packages/sim/**/*.ts
+---
+
+# packages/sim
+
+Função pura `step(state, decisions, cfg) → { state, perceptions?, events }`. Spec: `docs/05-simulacao.md`.
+
+Proibido:
+
+- `Math.random`, `Date`, `Date.now`, `performance`, I/O, rede, timers
+- Iterar `Map`/`Set` (usar arrays ordenados por `unitId` ou id estável)
+- Floats em acumuladores de longo prazo — posições em fixed-point (`fixed.ts`, ×1000)
+
+Obrigatório:
+
+- PRNG interno (`rng.ts`, xoshiro128**). Ruído via `deriveStream(seed, subsistema, ...)`
+- Decisões aplicadas em ordem lexicográfica de `unitId`
+- Estado serializável; `rngState` viaja com o `MatchState`
+- Teste de golden replay: adulterar decisões deve quebrar o hash
+
+```ts
+// ❌
+const jitter = Math.random() * 25;
+for (const [id, unit] of unitMap) { ... }
+
+// ✅
+const { value, state } = nextFloat(deriveStream(seed, 'sound', cycle, unitId));
+units.slice().sort((a, b) => (a.id < b.id ? -1 : 1));
+```

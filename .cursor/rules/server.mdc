@@ -1,0 +1,17 @@
+---
+description: Convenções do server NestJS e gateway WebSocket
+globs: apps/server/**/*.ts
+alwaysApply: false
+---
+
+# apps/server
+
+Simulador autoritativo. O front só observa. Spec do loop: `docs/03-arquitetura.md`.
+
+- Gateway WS: canal de agentes (`/agent`) e canal de espectadores
+- `MatchService` chama `packages/sim`. Timeout de decisão: 350 ms → no-op
+- Replay = semente + decisões (event sourcing), não snapshots
+- Validar mensagens com schemas de `@echo-front/protocol` antes de aplicar
+- Semente real só é publicada após a partida; no `welcome` vai o hash
+- Deploy: Railway/Fly/Render. WebSocket persistente não vai no Vercel
+- Sem `Date.now` dentro do tick — o relógio do ciclo é o do `MatchState`
