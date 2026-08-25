@@ -2,11 +2,11 @@
 
 ## Visão geral
 
-| Peça | Onde | Como |
-|---|---|---|
-| `apps/web` (site + replays) | **Vercel** | Git integration, deploy a cada push na `main` |
-| `apps/server` (partidas ao vivo + API) | Railway / Fly.io / Render | Node 22, processo longo com WebSocket |
-| CI (typecheck, build, testes, smoke) | **GitHub Actions** | `.github/workflows/ci.yml` |
+| Peça                                   | Onde                      | Como                                          |
+| -------------------------------------- | ------------------------- | --------------------------------------------- |
+| `apps/web` (site + replays)            | **Vercel**                | Git integration, deploy a cada push na `main` |
+| `apps/server` (partidas ao vivo + API) | Railway / Fly.io / Render | Node 22, processo longo com WebSocket         |
+| CI (typecheck, build, testes, smoke)   | **GitHub Actions**        | `.github/workflows/ci.yml`                    |
 
 ## Vercel (apps/web)
 
@@ -20,8 +20,16 @@ Configuração única no painel da Vercel:
 4. Variáveis de ambiente (opcionais):
    - `NEXT_PUBLIC_ECHO_API` → URL do server (ex.: `https://echo-server.fly.dev`). Sem ela, `/leaderboard` e `/matches` usam os JSONs estáticos do torneio em `public/data/` — o site funciona 100% sem server.
    - `NEXT_PUBLIC_ECHO_WS` → URL do canal de espectador (ex.: `wss://echo-server.fly.dev/spectate`) para o `/watch/demo` ao vivo.
+   - `NEXT_PUBLIC_SITE_URL` → domínio público do site (ex.: `https://echo-front.seudominio.com`), usado em `metadataBase`, `og:url`, `robots.txt` e `sitemap.xml` (`app/layout.tsx`, `app/robots.ts`, `app/sitemap.ts`). Sem ela, cai no fallback `https://echo-front.vercel.app` — **defina assim que o domínio de produção existir**, senão o link de compartilhamento (og:image, etc.) aponta pro lugar errado.
 
 A cada push na `main`, a Vercel faz build e publica; PRs ganham preview deployments automaticamente. O CI do GitHub roda em paralelo como portão de qualidade (a proteção de branch pode exigir o check `ci` verde antes do merge).
+
+## SEO e favicon
+
+- **Favicon e ícones** (`app/icon.tsx`, `app/apple-icon.tsx`): gerados via `next/og` (`ImageResponse`) em vez de arquivos estáticos — o desenho (anel ciano + ponto magenta, a mesma paleta de `globals.css`) fica no próprio código, sem depender de editor de imagem pra ajustar. O Next detecta esses arquivos automaticamente e injeta `<link rel="icon">`/`<link rel="apple-touch-icon">` no `<head>`.
+- **Imagem de compartilhamento** (`app/opengraph-image.tsx`, 1200×630): mesma técnica — usada como `og:image` e `twitter:image` (card `summary_large_image`) em qualquer link do site compartilhado no Slack/Twitter/WhatsApp/etc.
+- **Metadados** (`app/layout.tsx`): título com template (`%s · ECHO//FRONT` pras páginas internas), descrição, `openGraph`/`twitter`, `robots: { index: true, follow: true }`, `metadataBase` (ver `NEXT_PUBLIC_SITE_URL` acima).
+- **`robots.txt`/`sitemap.xml`** (`app/robots.ts`, `app/sitemap.ts`): convenção de arquivo do Next — libera indexação geral e lista as rotas estáticas (`/`, `/compete`, `/leaderboard`, `/matches`, `/watch/demo`). `/replay/[id]` fica de fora de propósito (uma URL por partida disputada, efêmera — o buscador chega lá a partir do link em `/matches`).
 
 ## Server (apps/server)
 
