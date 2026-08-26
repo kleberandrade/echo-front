@@ -1,0 +1,25 @@
+name: echo_front_agent_sdk
+description: >-
+  SDK Dart para escrever agentes do ECHO//FRONT — conecta via WebSocket, faz
+  o handshake do protocolo e chama sua função de decisão a cada percepção
+  recebida. Equivalente ao @echo-front/agents-sdk (TypeScript) e ao
+  echo-front-agent-sdk (Python).
+version: 0.1.0
+homepage: https://github.com/kleberandrade/echo-front/tree/main/packages/agents-sdk-dart
+repository: https://github.com/kleberandrade/echo-front
+issue_tracker: https://github.com/kleberandrade/echo-front/issues
+documentation: https://github.com/kleberandrade/echo-front/blob/main/docs/04-protocolo-agente.md
+topics:
+  - websocket
+  - game-ai
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  web_socket_channel: ^3.0.0
+
+dev_dependencies:
+  async: ^2.13.0
+  lints: ^6.0.0
+  test: ^1.25.0

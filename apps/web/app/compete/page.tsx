@@ -52,6 +52,35 @@ async def main():
 
 asyncio.run(main())`;
 
+const DART_EXAMPLE = `// dart pub add echo_front_agent_sdk
+import 'package:echo_front_agent_sdk/echo_front_agent_sdk.dart';
+
+Decision? decide(String unitId, Perception p) {
+  // Sua IA: percepção → decisão (docs/04-protocolo-agente.md)
+  final sound = (p['sensors']['sound'] as List).cast<Map<String, dynamic>>()
+    ..sort((a, b) => (b['intensity'] as num).compareTo(a['intensity'] as num));
+  if (sound.isNotEmpty && (sound.first['intensity'] as num) > 0.2) {
+    return {
+      'movement': {'direction': sound.first['direction'], 'speed': 0.8},
+      'debug': {'mode': 'investigar', 'confianca': sound.first['intensity']},
+    };
+  }
+  return {
+    'movement': {'direction': 0, 'speed': 0.5},
+  };
+}
+
+Future<void> main() async {
+  final agent = Agent(AgentOptions(
+    url: 'ws://SERVIDOR:3001/agent',
+    agentName: 'meu-agente-dart',
+    // token: '...', // opcional: identidade registrada via POST /api/agents
+    onPerception: decide,
+    reconnect: true, // backoff automático se a conexão cair
+  ));
+  await agent.connect(); // roda até a partida terminar
+}`;
+
 function Code({ title, code }: { title: string; code: string }) {
   return (
     <div className="border border-slate-800 bg-black/50">
@@ -65,7 +94,7 @@ function Code({ title, code }: { title: string; code: string }) {
 
 function DataTable({ cols, rows }: { cols: string[]; rows: (string | number)[][] }) {
   return (
-    <table className="w-full border border-slate-800 text-[11px]">
+    <table className="w-full border border-slate-800 bg-black/50 text-[11px]">
       <thead>
         <tr className="border-b border-slate-800 text-slate-500">
           {cols.map((c) => (
@@ -111,7 +140,8 @@ export default function CompetePage() {
       <h1 className="py-4 text-center text-2xl font-bold tracking-[0.3em]">COMPETIR</h1>
       <p className="pb-6 text-center text-sm text-slate-400">
         Seu agente enxerga o mundo só por sensores imperfeitos e responde 2 decisões por segundo.
-        Qualquer linguagem que fale WebSocket + JSON compete — SDKs prontos em TypeScript e Python.
+        Qualquer linguagem que fale WebSocket + JSON compete — SDKs prontos em TypeScript, Python e
+        Dart.
       </p>
 
       <section className="space-y-6 text-sm text-slate-300">
@@ -203,6 +233,7 @@ export default function CompetePage() {
 
         <Code title="TYPESCRIPT · com o SDK (@echo-front/agents-sdk)" code={TS_EXAMPLE} />
         <Code title="PYTHON · com o SDK (echo-front-agent-sdk)" code={PY_EXAMPLE} />
+        <Code title="DART · com o SDK (echo_front_agent_sdk)" code={DART_EXAMPLE} />
 
         <div>
           <h2 className="mb-2 tracking-widest text-cian">4 · VALIDE ANTES DE CONECTAR</h2>
@@ -251,8 +282,8 @@ export default function CompetePage() {
           />
           <p className="mt-2 text-slate-400">
             Uma queda de conexão de rede (não um erro de protocolo) simplesmente fecha o WebSocket —
-            os dois SDKs oficiais têm reconexão com backoff opcional (
-            <code className="text-emerald-300">reconnect: true</code> no TS,{' '}
+            os três SDKs oficiais têm reconexão com backoff opcional (
+            <code className="text-emerald-300">reconnect: true</code> no TS e no Dart,{' '}
             <code className="text-emerald-300">reconnect=True</code> no Python): 1s, 2s, 3s... até
             um teto de 5s, desistindo após 30 tentativas. Nunca reconecta depois de um{' '}
             <code>match_end</code> — isso é o fim normal da partida, não uma falha.
@@ -273,7 +304,7 @@ export default function CompetePage() {
 
         <div>
           <h2 className="mb-2 tracking-widest text-cian">8 · SENSORES (RESUMO)</h2>
-          <table className="w-full border border-slate-800 text-[11px]">
+          <table className="w-full border border-slate-800 bg-black/50 text-[11px]">
             <tbody>
               {[
                 ['visual', 'preciso, mas cone limitado e bloqueado por obstáculos'],

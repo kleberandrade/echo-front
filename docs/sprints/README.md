@@ -20,6 +20,7 @@ Sprints de **2 semanas**, projeto solo/dupla. Cada sprint termina com uma **demo
 | [13](./sprint-13-docker-sandbox-topologia.md)  | Sandbox Docker: corrige topologia de rede                 | Orquestrador containerizado na rede `--internal`, `apps/server/Dockerfile`, `scripts/run-tournament-sandbox.sh`         |
 | [14](./sprint-14-fog-npm-e-playtest.md)        | Fog com envelhecimento, prontos pro npm, guia de playtest | `sensors.memory` (fog com memória), `protocol`/`sim`/`agents-sdk` prontos pra `npm publish`, `docs/10-guia-playtest.md` |
 | [15](./sprint-15-postgres-neon.md)             | Persistência em Postgres (Neon)                           | `Store` interface async, `PgMatchStore`, cache de Elo síncrono pro matchmaking, CI com serviço Postgres                 |
+| [16](./sprint-16-legibilidade-e-sdk-dart.md)   | Legibilidade das tabelas em /compete e SDK Dart           | Fundo sólido nas tabelas do guia do competidor, terceiro SDK oficial (`echo_front_agent_sdk`, Dart)                     |
 
 ## Marcos
 
