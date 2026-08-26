@@ -121,10 +121,10 @@ wss.close();
 // Verificação: TODO replay do torneio precisa re-simular sem divergência.
 // ---------------------------------------------------------------------------
 const store = server.store!;
-const results = store.listResults();
+const results = await store.listResults();
 let divergences = 0;
 for (const r of results) {
-  const replay = replayFromJsonl(store.readReplay(r.matchId)!);
+  const replay = replayFromJsonl((await store.readReplay(r.matchId))!);
   try {
     resimulate(replay);
   } catch {
@@ -136,7 +136,7 @@ for (const r of results) {
 // Classificação sempre soma o histórico inteiro do dataDir (é assim que o
 // Elo persiste entre execuções); SEASON só rotula os resultados desta
 // rodada, não filtra o que já foi jogado antes.
-const standings = store.standings();
+const standings = await store.standings();
 const elapsed = ((performance.now() - started) / 1000).toFixed(1);
 const label = SEASON ? ` (temporada: ${SEASON})` : '';
 console.log(
@@ -162,7 +162,7 @@ writeFileSync(
   join(OUT, 'data', 'matches.json'),
   JSON.stringify({ generatedAt: new Date().toISOString(), matches: results }, null, 2),
 );
-for (const id of store.listReplayIds()) {
+for (const id of await store.listReplayIds()) {
   cpSync(
     join(DATA_DIR, 'replays', `${id}.replay.jsonl`),
     join(OUT, 'replays', `${id}.replay.jsonl`),

@@ -42,13 +42,28 @@ pnpm install --frozen-lockfile && pnpm turbo run build --filter=@echo-front/serv
 node apps/server/dist/main.js        # PORT no env; /health para o healthcheck
 ```
 
-Persistência em disco (`data/`): monte um volume no diretório de trabalho (os replays e o results.jsonl vivem ali). Para transmissão com delay anti-coaching, configure `agentServer.configure({ spectateDelayMs: 30000 })` no bootstrap (ou exponha via env quando necessário).
+Persistência: dois modos, mesma interface (`Store`, `apps/server/src/match/store.ts` — pensada desde a sprint-06 pra essa troca sem tocar no resto).
+
+- **Sem `DATABASE_URL`** (padrão): arquivos em disco (`data/agents.json`, `data/results.jsonl`, `data/replays/*.replay.jsonl`). Monte um volume no diretório de trabalho — sem ele, o histórico não sobrevive a um redeploy/restart.
+- **Com `DATABASE_URL`** (sprint-15): Postgres via `PgMatchStore` (`store-pg.ts`), ligado automaticamente por `AgentServer.initStore()`. Schema (`agents`/`results`/`replays`) é criado sob demanda na primeira query — não precisa rodar migração antes do primeiro deploy.
+
+### Neon (Postgres gerenciado)
+
+O usuário já adicionou a integração Neon×Vercel no projeto `apps/web`. Isso **não** configura `apps/server` sozinho — a integração cria o banco e injeta `DATABASE_URL` só nas env vars do projeto Vercel, e `apps/server` roda em Railway/Fly/Render, não na Vercel. Passo manual necessário:
+
+1. No painel da Vercel, projeto do `apps/web` → Settings → Environment Variables → copiar o valor de `DATABASE_URL` (ou `POSTGRES_URL`, dependendo de como a integração nomeou) gerado pela integração Neon.
+2. Colar esse valor como `DATABASE_URL` nas env vars da plataforma que roda `apps/server` (Railway/Fly/Render).
+3. Redeploy do server — no próximo boot, `initStore()` detecta a env var e troca `FileMatchStore` por `PgMatchStore` automaticamente, sem mudança de código.
+
+Sem esse passo manual, `apps/server` continua no `FileMatchStore` (disco) — o Neon adicionado na Vercel fica sem uso até `DATABASE_URL` ser copiado pra lá.
+
+Para transmissão com delay anti-coaching, configure `agentServer.configure({ spectateDelayMs: 30000 })` no bootstrap (ou exponha via env quando necessário).
 
 ## CI (GitHub Actions)
 
 `.github/workflows/ci.yml`, dois jobs:
 
-1. **ci** — `pnpm typecheck` + `pnpm build` + `pnpm test` (protocol, sim com golden replays, agents-sdk, server com e2e de séries).
+1. **ci** — `pnpm typecheck` + `pnpm build` + `pnpm test` (protocol, sim com golden replays, agents-sdk, server com e2e de séries). Sobe um serviço `postgres:16` e define `TEST_DATABASE_URL`, então os testes do `PgMatchStore` (`store-pg.test.ts`, `agent-server.pg.e2e.test.ts`) rodam de verdade em vez de serem pulados.
 2. **smoke** — instala o Chromium do Playwright, sobe o site buildado e reproduz o replay demo: valida o placar renderizado após scrub e o `finalHash` re-simulado **no browser** (paridade Node×browser a cada commit). Screenshots sobem como artifact do workflow.
 
 ## Checklist de release

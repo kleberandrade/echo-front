@@ -19,6 +19,7 @@
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/platform-ws": "^11.0.0",
     "@nestjs/websockets": "^11.0.0",
+    "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "ws": "^8.18.0",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@echo-front/agents-sdk": "workspace:*",
     "@types/node": "^22.10.0",
+    "@types/pg": "^8.23.1",
     "@types/ws": "^8.5.13",
     "typescript": "^5.7.2",
     "vitest": "^3.0.5"

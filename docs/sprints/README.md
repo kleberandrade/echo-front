@@ -19,6 +19,7 @@ Sprints de **2 semanas**, projeto solo/dupla. Cada sprint termina com uma **demo
 | [12](./sprint-12-matchmaking-e-elo.md)         | Matchmaking por Elo e Elo persistente                     | Fila com pareamento por Elo, temporadas rotuladas, `scripts/start.sh`                                                   |
 | [13](./sprint-13-docker-sandbox-topologia.md)  | Sandbox Docker: corrige topologia de rede                 | Orquestrador containerizado na rede `--internal`, `apps/server/Dockerfile`, `scripts/run-tournament-sandbox.sh`         |
 | [14](./sprint-14-fog-npm-e-playtest.md)        | Fog com envelhecimento, prontos pro npm, guia de playtest | `sensors.memory` (fog com memória), `protocol`/`sim`/`agents-sdk` prontos pra `npm publish`, `docs/10-guia-playtest.md` |
+| [15](./sprint-15-postgres-neon.md)             | Persistência em Postgres (Neon)                           | `Store` interface async, `PgMatchStore`, cache de Elo síncrono pro matchmaking, CI com serviço Postgres                 |
 
 ## Marcos
 

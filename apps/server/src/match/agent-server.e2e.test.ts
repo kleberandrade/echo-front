@@ -15,7 +15,9 @@ import { AgentServer } from './agent-server.js';
 const FAST_CFG = { ...DEFAULT_CONFIG, totalCycles: 10 };
 const GAMES = 2;
 
-function startServer(dataDir: string): Promise<{ url: string; wss: WebSocketServer; server: AgentServer }> {
+function startServer(
+  dataDir: string,
+): Promise<{ url: string; wss: WebSocketServer; server: AgentServer }> {
   return new Promise((resolve) => {
     const server = new AgentServer();
     server.configure({
@@ -83,7 +85,7 @@ describe('AgentServer e2e — séries ranqueadas', () => {
 
     // Aguarda a persistência do último resultado.
     await new Promise((r) => setTimeout(r, 200));
-    const results = ctx.server.store!.listResults();
+    const results = await ctx.server.store!.listResults();
     expect(results.length).toBe(GAMES);
     // Lados espelhados: mesmo par, times trocados entre g1 e g2.
     expect(results[0]!.agents.cian).toBe('wanderer');
@@ -99,7 +101,7 @@ describe('AgentServer e2e — séries ranqueadas', () => {
       expect(r.points.cian + r.points.magenta).toBeGreaterThan(0);
     }
 
-    const standings = ctx.server.store!.standings();
+    const standings = await ctx.server.store!.standings();
     expect(standings.length).toBe(2);
     expect(standings.reduce((acc, s) => acc + s.matches, 0)).toBe(GAMES * 2);
   }, 30000);

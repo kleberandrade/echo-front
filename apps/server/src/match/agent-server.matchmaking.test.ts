@@ -8,7 +8,7 @@ import { EventEmitter } from 'node:events';
 import { describe, expect, it } from 'vitest';
 import { PROTOCOL_VERSION } from '@echo-front/protocol';
 import { AgentServer } from './agent-server.js';
-import type { MatchStore } from './store.js';
+import type { Store } from './store.js';
 
 class FakeSocket extends EventEmitter {
   readyState = 1;
@@ -42,9 +42,9 @@ function serverWithElo(elos: Record<string, number>, matchmakingWindowMs = 0): A
     matchmakingWindowMs,
   });
   const fakeStore = {
-    standings: () => Object.entries(elos).map(([agent, elo]) => ({ agent, elo })),
+    standings: async () => Object.entries(elos).map(([agent, elo]) => ({ agent, elo })),
   };
-  s.store = fakeStore as unknown as MatchStore;
+  s.store = fakeStore as unknown as Store;
   return s;
 }
 
@@ -83,6 +83,7 @@ describe('AgentServer — fila de matchmaking por Elo (sprint-12)', () => {
     // (diff 400 pra qualquer um dos dois) fica sem par e segue esperando —
     // mesmo sendo o primeiro a chegar (não é FIFO).
     const s = serverWithElo({ forte: 1400, fraco: 900, medio: 1000 }, 20);
+    await s.refreshEloCache(); // cache é reaquecido de forma assíncrona; garante que já está quente antes das hellos
     const forte = new FakeSocket();
     const fraco = new FakeSocket();
     const medio = new FakeSocket();

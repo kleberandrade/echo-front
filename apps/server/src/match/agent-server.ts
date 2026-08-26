@@ -27,7 +27,8 @@ import {
   type ReplayCycleRecord,
   DEFAULT_CONFIG,
 } from '@echo-front/sim';
-import { MatchStore, scoreMatch } from './store.js';
+import { FileMatchStore, scoreMatch, type Store } from './store.js';
+import { PgMatchStore } from './store-pg.js';
 import { IpRateLimiter, type RateLimiterOptions } from './rate-limiter.js';
 
 export interface AgentServerOptions {
@@ -38,8 +39,17 @@ export interface AgentServerOptions {
   seriesGames: number;
   /** Pausa entre partidas da série, em ms. */
   interGameMs: number;
-  /** Diretório de dados; vazio desativa persistência. */
+  /** Diretório de dados; vazio desativa persistência (ignorado se `databaseUrl` estiver definido). */
   dataDir: string;
+  /**
+   * String de conexão Postgres (sprint-15) — quando definida, substitui o
+   * `FileMatchStore` por `PgMatchStore`. Padrão: `undefined`, e nesse caso
+   * `initStore()` também olha `process.env.DATABASE_URL` (é assim que o
+   * server pega a conexão do Neon sem precisar de código extra — só
+   * definir a env var na plataforma de deploy, copiada da integração
+   * Neon×Vercel; ver docs/08-deploy.md).
+   */
+  databaseUrl?: string;
   /** Atraso da transmissão para espectadores, em ms (anti-coaching). */
   spectateDelayMs: number;
   /** Avisos por payload inválido antes do aviso formal / desconexão. */
@@ -238,9 +248,11 @@ class Series {
     readonly a: { ws: WebSocket | null; name: string },
     readonly b: { ws: WebSocket | null; name: string },
     private readonly opts: AgentServerOptions,
-    private readonly store: MatchStore | undefined,
+    private readonly store: Store | undefined,
     private readonly onMatchStarted: (m: LiveMatch) => void,
     private readonly onFinished: () => void,
+    /** Reaquece o cache de Elo usado pelo matchmaking (sprint-15) depois que um resultado é gravado. */
+    private readonly refreshElo: () => void,
   ) {}
 
   start(): void {
@@ -277,29 +289,34 @@ class Series {
           finalState.units
             .filter((u) => u.team === team)
             .reduce((acc, u) => acc + u.energySpent, 0);
-        this.store.recordResult(
-          {
-            matchId,
-            seriesId: this.id,
-            game: this.game,
-            mode: finalState.mode,
-            seed: match.seed,
-            finalHash: replay.finalHash,
-            agents: { cian: cian.name, magenta: magenta.name },
-            score: finalState.score,
-            winner: decideWinner(finalState),
-            reason: finalState.endReason ?? 'time_up',
-            points: scoreMatch(finalState),
-            stats: {
-              unitsAlive: { cian: alive('cian'), magenta: alive('magenta') },
-              energySpent: { cian: spent('cian'), magenta: spent('magenta') },
-              kills: finalState.units.filter((u) => !u.alive).length,
+        this.store
+          .recordResult(
+            {
+              matchId,
+              seriesId: this.id,
+              game: this.game,
+              mode: finalState.mode,
+              seed: match.seed,
+              finalHash: replay.finalHash,
+              agents: { cian: cian.name, magenta: magenta.name },
+              score: finalState.score,
+              winner: decideWinner(finalState),
+              reason: finalState.endReason ?? 'time_up',
+              points: scoreMatch(finalState),
+              stats: {
+                unitsAlive: { cian: alive('cian'), magenta: alive('magenta') },
+                energySpent: { cian: spent('cian'), magenta: spent('magenta') },
+                kills: finalState.units.filter((u) => !u.alive).length,
+              },
+              finishedAt: new Date().toISOString(),
+              ...(this.opts.season ? { season: this.opts.season } : {}),
             },
-            finishedAt: new Date().toISOString(),
-            ...(this.opts.season ? { season: this.opts.season } : {}),
-          },
-          replay,
-        );
+            replay,
+          )
+          .then(() => this.refreshElo())
+          .catch((err: unknown) =>
+            console.error(`[echo-front] erro ao gravar resultado de ${matchId}:`, err),
+          );
       }
       setTimeout(() => this.next(), this.opts.interGameMs);
     };
@@ -317,7 +334,7 @@ class Series {
 
 export class AgentServer {
   private opts: AgentServerOptions = { ...DEFAULT_OPTIONS };
-  store: MatchStore | undefined;
+  store: Store | undefined;
   /**
    * Fila de matchmaking (sprint-12): mais de um agente pode ficar esperando
    * ao mesmo tempo. Com `matchmakingWindowMs > 0`, o pareamento espera a
@@ -333,6 +350,18 @@ export class AgentServer {
   private agentLimiter: IpRateLimiter | null = null;
   private spectatorLimiter: IpRateLimiter | null = null;
   private agentIpBySocket = new Map<WebSocket, string>();
+  /**
+   * Cache do Elo usado pelo matchmaking (sprint-15). `store.standings()` é
+   * async (obrigatório com Postgres — uma query de rede) mas o pareamento
+   * (`onHello`/`tryPairAll`) precisa ser síncrono: uma conexão nova não
+   * pode ficar esperando um round-trip de banco só pra entrar na fila.
+   * O cache é reaquecido no boot/`configure()` e depois de cada resultado
+   * gravado (`refreshEloCache`) — exatamente os únicos momentos em que o
+   * Elo de alguém muda, então nunca fica "velho" além do necessário.
+   */
+  private eloCache = new Map<string, number>();
+  /** Descarta resultados de refresh que resolvem fora de ordem (ver refreshEloCache). */
+  private eloCacheGen = 0;
 
   constructor() {
     this.initStore();
@@ -340,7 +369,39 @@ export class AgentServer {
   }
 
   private initStore(): void {
-    this.store = this.opts.dataDir ? new MatchStore(this.opts.dataDir) : undefined;
+    const databaseUrl = this.opts.databaseUrl ?? process.env.DATABASE_URL;
+    this.store = databaseUrl
+      ? new PgMatchStore(databaseUrl)
+      : this.opts.dataDir
+        ? new FileMatchStore(this.opts.dataDir)
+        : undefined;
+    void this.refreshEloCache();
+  }
+
+  /**
+   * Recarrega o cache de Elo usado pelo matchmaking a partir do store
+   * (best-effort). Chamadas concorrentes podem resolver fora de ordem (ex.:
+   * a do construtor, contra o store antigo, ainda em voo quando
+   * `configure()` já trocou pra outro store e disparou uma chamada mais
+   * nova que resolve primeiro) — `eloCacheGen` garante que só o resultado
+   * da chamada MAIS RECENTE é aplicado; qualquer resolução tardia de uma
+   * chamada já superada é descartada em vez de sobrescrever dado fresco.
+   */
+  async refreshEloCache(): Promise<void> {
+    if (!this.store) return;
+    const gen = ++this.eloCacheGen;
+    try {
+      const standings = await this.store.standings();
+      if (gen !== this.eloCacheGen) return; // superada por uma chamada mais nova — descarta
+      this.eloCache = new Map(standings.map((s) => [s.agent, s.elo]));
+    } catch (err) {
+      console.error('[echo-front] falha ao atualizar cache de Elo:', err);
+    }
+  }
+
+  /** Elo atual do agente (1000 se ainda não jogou / sem persistência / cache ainda frio). */
+  private eloOf(name: string): number {
+    return this.eloCache.get(name) ?? 1000;
   }
 
   private initLimiters(): void {
@@ -438,12 +499,17 @@ export class AgentServer {
 
     if (msg.type === 'hello') {
       // Token válido usa o nome registrado; sem token joga como convidado.
-      let name = msg.payload.agentName;
+      // authenticate() é async (Postgres = round-trip de rede) — o caso sem
+      // token (o mais comum) continua 100% síncrono, sem esperar nada.
+      const rawName = msg.payload.agentName;
       if (msg.payload.token && this.store) {
-        const known = this.store.authenticate(msg.payload.token);
-        if (known) name = known.name;
+        this.store
+          .authenticate(msg.payload.token)
+          .then((known) => this.onHello(ws, known ? known.name : rawName))
+          .catch((err: unknown) => console.error('[echo-front] erro ao autenticar agente:', err));
+      } else {
+        this.onHello(ws, rawName);
       }
-      this.onHello(ws, name);
       return;
     }
 
@@ -463,12 +529,6 @@ export class AgentServer {
     }
   }
 
-  /** Elo atual do agente (1000 se ainda não jogou / sem persistência). */
-  private eloOf(name: string): number {
-    const row = this.store?.standings().find((s) => s.agent === name);
-    return row?.elo ?? 1000;
-  }
-
   private pair(a: { ws: WebSocket; name: string }, b: { ws: WebSocket; name: string }): void {
     const seriesId = `s${++this.counter}`;
     const series = new Series(
@@ -483,6 +543,7 @@ export class AgentServer {
       () => {
         /* série concluída; sockets podem encerrar */
       },
+      () => void this.refreshEloCache(),
     );
     this.bySocket.set(a.ws, series);
     this.bySocket.set(b.ws, series);

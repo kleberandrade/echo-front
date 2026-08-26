@@ -6,9 +6,9 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { Replay } from '@echo-front/sim';
-import { MatchStore, type MatchResult } from './store.js';
+import { FileMatchStore, type MatchResult } from './store.js';
 
 function result(overrides: Partial<MatchResult> & { matchId: string }): MatchResult {
   return {
@@ -30,42 +30,38 @@ function result(overrides: Partial<MatchResult> & { matchId: string }): MatchRes
 
 const FAKE_REPLAY = { finalHash: 'hash', cycles: [], meta: {} } as unknown as Replay;
 
-describe('MatchStore.standings — persistência entre execuções (sprint-12)', () => {
+describe('FileMatchStore.standings — persistência entre execuções (sprint-12)', () => {
   let dir: string;
-  let store: MatchStore;
+  let store: FileMatchStore;
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'echo-front-store-'));
-    store = new MatchStore(dir);
+    store = new FileMatchStore(dir);
   });
 
-  afterEach(() => {
-    // dirs de teste ficam em /tmp — sem cleanup explícito, o SO cuida disso.
-  });
-
-  it('sem filtro, soma resultados de "execuções" diferentes (sem season e com season)', () => {
-    store.recordResult(result({ matchId: 'm1' }), FAKE_REPLAY); // sem rótulo (histórico "legado")
-    store.recordResult(result({ matchId: 'm2', season: 'temporada-3' }), FAKE_REPLAY);
-    const standings = store.standings();
+  it('sem filtro, soma resultados de "execuções" diferentes (sem season e com season)', async () => {
+    await store.recordResult(result({ matchId: 'm1' }), FAKE_REPLAY); // sem rótulo (histórico "legado")
+    await store.recordResult(result({ matchId: 'm2', season: 'temporada-3' }), FAKE_REPLAY);
+    const standings = await store.standings();
     const a = standings.find((s) => s.agent === 'a')!;
     expect(a.matches).toBe(2); // as duas contam — nada foi descartado entre execuções
     expect(a.elo).toBeGreaterThan(1000); // duas vitórias seguidas sobem o Elo
   });
 
-  it('com filtro de season, conta só os resultados daquele rótulo', () => {
-    store.recordResult(result({ matchId: 'm1' }), FAKE_REPLAY); // sem rótulo
-    store.recordResult(result({ matchId: 'm2', season: 'temporada-3' }), FAKE_REPLAY);
-    store.recordResult(result({ matchId: 'm3', season: 'temporada-3' }), FAKE_REPLAY);
-    const s3 = store.standings('temporada-3');
+  it('com filtro de season, conta só os resultados daquele rótulo', async () => {
+    await store.recordResult(result({ matchId: 'm1' }), FAKE_REPLAY); // sem rótulo
+    await store.recordResult(result({ matchId: 'm2', season: 'temporada-3' }), FAKE_REPLAY);
+    await store.recordResult(result({ matchId: 'm3', season: 'temporada-3' }), FAKE_REPLAY);
+    const s3 = await store.standings('temporada-3');
     expect(s3.find((s) => s.agent === 'a')!.matches).toBe(2);
 
-    const legado = store.standings('legado'); // rótulo que não existe em nenhum resultado
+    const legado = await store.standings('legado'); // rótulo que não existe em nenhum resultado
     expect(legado).toEqual([]);
   });
 
-  it('resultados persistem entre instâncias diferentes de MatchStore apontando pro mesmo dir', () => {
-    store.recordResult(result({ matchId: 'm1' }), FAKE_REPLAY);
-    const reopened = new MatchStore(dir); // simula um novo processo/execução
-    expect(reopened.standings().find((s) => s.agent === 'a')!.matches).toBe(1);
+  it('resultados persistem entre instâncias diferentes de FileMatchStore apontando pro mesmo dir', async () => {
+    await store.recordResult(result({ matchId: 'm1' }), FAKE_REPLAY);
+    const reopened = new FileMatchStore(dir); // simula um novo processo/execução
+    expect((await reopened.standings()).find((s) => s.agent === 'a')!.matches).toBe(1);
   });
 });
