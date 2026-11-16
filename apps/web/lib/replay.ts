@@ -23,11 +23,15 @@ export interface LoadedReplay {
 
 export function loadReplay(jsonl: string): LoadedReplay {
   const replay = replayFromJsonl(jsonl);
+  if (replay.header.map !== ARENA_ALPHA.id) {
+    throw new Error(`Unsupported replay map: ${replay.header.map}`);
+  }
   // Merge defensivo: replays de versões minor antigas ganham os defaults novos.
   const cfg = { ...DEFAULT_CONFIG, ...replay.header.config };
   let state = createMatch(replay.header.seed, ARENA_ALPHA, cfg);
   const states: MatchState[] = [state];
   for (const rec of replay.cycles) {
+    if (rec.c !== state.cycle) throw new Error(`Replay out of sequence at cycle ${rec.c}`);
     state = stepCycle(state, rec.d, ARENA_ALPHA, cfg).state;
     states.push(state);
   }
