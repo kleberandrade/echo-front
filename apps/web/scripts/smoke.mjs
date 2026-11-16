@@ -6,16 +6,23 @@
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
+import { once } from 'node:events';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const PORT = 3411;
-const server = spawn('npx', ['next', 'start', '-p', String(PORT)], {
-  cwd: new URL('..', import.meta.url).pathname,
-  stdio: 'pipe',
-});
+const require = createRequire(import.meta.url);
+const server = spawn(
+  process.execPath,
+  [require.resolve('next/dist/bin/next'), 'start', '-p', String(PORT)],
+  { cwd: fileURLToPath(new URL('..', import.meta.url)), stdio: 'inherit' },
+);
+let browser;
 
 async function waitReady() {
   for (let i = 0; i < 60; i++) {
+    if (server.exitCode !== null) throw new Error(`Next.js exited with code ${server.exitCode}`);
     try {
       const r = await fetch(`http://localhost:${PORT}/`);
       if (r.ok) return;
@@ -31,7 +38,7 @@ try {
   await waitReady();
   // PW_CHROMIUM permite apontar para um Chromium local quando a versão do
   // playwright não bate com os browsers instalados (ex.: sandbox de CI).
-  const browser = await chromium.launch(
+  browser = await chromium.launch(
     process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
   );
   const page = await browser.newPage({ viewport: { width: 1440, height: 860 } });
@@ -62,10 +69,20 @@ try {
   await page.waitForTimeout(400);
   await page.screenshot({ path: 'screenshots/replay-team-view.png' });
 
-  await browser.close();
   console.log(
     'SMOKE OK — placar final renderizado, hash verificado no browser, screenshots salvos',
   );
 } finally {
-  server.kill();
+  try {
+    await browser?.close();
+  } finally {
+    if (server.exitCode === null && server.signalCode === null) {
+      const exited = once(server, 'exit');
+      const deadline = setTimeout(() => server.kill('SIGKILL'), 5000);
+      deadline.unref();
+      server.kill('SIGTERM');
+      await exited;
+      clearTimeout(deadline);
+    }
+  }
 }
