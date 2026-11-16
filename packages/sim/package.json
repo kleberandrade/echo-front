@@ -1,7 +1,7 @@
 {
   "name": "@echo-front/sim",
   "version": "0.6.0",
-  "description": "Simulador determinístico da arena tática do ECHO//FRONT — movimento, sensores com ruído reproduzível, fog com envelhecimento.",
+  "description": "Simulador determin\u00edstico da arena t\u00e1tica do ECHO//FRONT \u2014 movimento, sensores com ru\u00eddo reproduz\u00edvel, fog com envelhecimento.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,12 +24,12 @@
   },
   "dependencies": {
     "@echo-front/protocol": "workspace:*",
-    "zod": "^3.25.76"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "^22.20.1",
-    "typescript": "^5.7.2",
-    "vitest": "^3.0.5"
+    "@types/node": "^24.19.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12"
   },
   "keywords": [
     "echo-front",

@@ -23,8 +23,8 @@
 #   # ("echo-front-orchestrator" resolve via DNS interno do Docker dentro da
 #   # mesma rede — não depende de host.docker.internal nem de internet)
 
-FROM node:20-slim AS build
-RUN corepack enable
+FROM node:24-slim AS build
+RUN npm install --global pnpm@10.34.9
 WORKDIR /repo
 COPY . .
 RUN pnpm install --frozen-lockfile
@@ -43,7 +43,7 @@ RUN pnpm --filter @echo-front/protocol build \
 # `pnpm deploy` + `node dist/main.js` rodando de pé, respondendo /health).
 RUN pnpm --filter @echo-front/server deploy --prod --legacy /out
 
-FROM node:20-slim AS runtime
+FROM node:24-slim AS runtime
 WORKDIR /app
 COPY --from=build /out ./
 ENV NODE_ENV=production

@@ -14,23 +14,23 @@
   "dependencies": {
     "@echo-front/protocol": "workspace:*",
     "@echo-front/sim": "workspace:*",
-    "@nestjs/common": "^11.0.0",
-    "@nestjs/core": "^11.0.0",
-    "@nestjs/platform-express": "^11.0.0",
-    "@nestjs/platform-ws": "^11.0.0",
-    "@nestjs/websockets": "^11.0.0",
-    "pg": "^8.23.0",
+    "@nestjs/common": "^11.2.10",
+    "@nestjs/core": "^11.2.10",
+    "@nestjs/platform-express": "^11.2.10",
+    "@nestjs/platform-ws": "^11.2.10",
+    "@nestjs/websockets": "^11.2.10",
+    "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1",
-    "ws": "^8.18.0",
-    "zod": "^3.24.1"
+    "rxjs": "^7.8.2",
+    "ws": "^8.23.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@echo-front/agents-sdk": "workspace:*",
-    "@types/node": "^22.10.0",
+    "@types/node": "^24.19.2",
     "@types/pg": "^8.23.1",
-    "@types/ws": "^8.5.13",
-    "typescript": "^5.7.2",
-    "vitest": "^3.0.5"
+    "@types/ws": "^8.18.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12"
   }
 }

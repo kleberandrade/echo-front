@@ -27,12 +27,12 @@
   "dependencies": {
     "@echo-front/protocol": "workspace:*",
     "@echo-front/sim": "workspace:*",
-    "ws": "^8.18.0"
+    "ws": "^8.23.0"
   },
   "devDependencies": {
-    "@types/ws": "^8.5.13",
-    "typescript": "^5.7.2",
-    "vitest": "^3.0.5"
+    "@types/ws": "^8.18.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12"
   },
   "keywords": [
     "echo-front",

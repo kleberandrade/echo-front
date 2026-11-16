@@ -8,6 +8,19 @@ coverage/
 .env.local
 .DS_Store
 .vercel/
+.venv/
+.pytest_cache/
+__pycache__/
+.dart_tool/
+.metrics/
+target/
+screenshots/
+*.tsbuildinfo
+*.egg-info/
+.coverage
 # scratch dir usado como workaround pra travas de git em ambientes que
 # bloqueiam unlink() (sandboxes de agente) — nunca é conteúdo de verdade.
 apps/web/public/_to_delete/
+
+# Local match registration contains authentication tokens.
+data/

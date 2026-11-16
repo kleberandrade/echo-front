@@ -2,7 +2,7 @@
 # Contrato: expõe um processo que conecta em AGENT_WS_URL (env, injetada pelo
 # orquestrador) e fala o protocolo de agente (docs/04). Sem porta exposta —
 # é o container quem disca para o orquestrador, nunca o contrário.
-FROM node:20-slim
+FROM node:24-slim
 
 WORKDIR /agent
 COPY package.json .

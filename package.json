@@ -1,9 +1,9 @@
 {
   "name": "echo-front-monorepo",
   "private": true,
-  "packageManager": "pnpm@10.28.0",
+  "packageManager": "pnpm@10.34.9",
   "engines": {
-    "node": "22.x"
+    "node": "24.x || 26.x"
   },
   "scripts": {
     "build": "turbo run build",
@@ -14,7 +14,9 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,md,json,mjs,css}\"",
-    "prepare": "node -e \"if(!(process.env.VERCEL||process.env.CI)) require('child_process').execSync('husky',{stdio:'inherit'})\""
+    "prepare": "node -e \"if(!(process.env.VERCEL||process.env.CI)) require('child_process').execSync('husky',{stdio:'inherit'})\"",
+    "test:smoke": "pnpm --filter @echo-front/web smoke",
+    "format:check": "prettier --check \"**/*.{ts,tsx,md,json,mjs,css}\""
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -26,12 +28,12 @@
     "*.{ts,tsx,md,json,mjs,css}": "prettier --write"
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.2.2",
-    "@commitlint/config-conventional": "^21.2.2",
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
     "husky": "^9.1.7",
-    "lint-staged": "^17.3.0",
-    "prettier": "^3.4.2",
-    "turbo": "^2.3.3",
-    "typescript": "^5.7.2"
+    "lint-staged": "^17.6.1",
+    "prettier": "^3.10.1",
+    "turbo": "^2.11.11",
+    "typescript": "^5.9.3"
   }
 }
