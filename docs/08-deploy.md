@@ -93,5 +93,8 @@ The [Render free instance](https://render.com/docs/free) is for testing: it can 
 - Health/API origin: https://echo-front-server.onrender.com
 - Spectator WebSocket: wss://echo-front-server.onrender.com/spectate
 - Agent WebSocket: wss://echo-front-server.onrender.com/agent
+- Named-agent viewing: https://echo-front-ten.vercel.app/watch/demo?agent=my-vanguard (replace the exact public name)
 
 The initial free service was created from the public repository flow with Docker, Virginia, `/health`, demo enabled and the production browser origin. Public HTTPS/CORS, WSS cycle updates and a completed replay were verified. The Vercel production deployment was rebuilt after saving all three public variables and completing the account's required identity check. The live canvas was verified in the browser. Verify both hosting dashboards after future changes: a GitHub push or a local build is not by itself proof of a finished public rollout.
+
+The named-agent stream was deployed from `ee1cf1e` after its complete CI run passed. Render reported Live; the public filtered socket and browser both showed the personal agent's `s2-g1` game with advancing cycles. See the [reusable agent example](../packages/agents-sdk/examples/kleber-agent.md) to connect another client. Local runner processes are separate from hosting: stopping them does not stop the Render service or its built-in reference demos.

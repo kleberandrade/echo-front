@@ -1,6 +1,6 @@
 # @echo-front/agents-sdk
 
-TypeScript/Node client for ECHO//FRONT. `Agent` handles WebSocket handshake and per-unit perception callbacks. Reference bots include `wandererBot`, `hunterBot`, `courierBot`, `tricksterBot` and `ghostBot`; `siegeRoutine` supplies a Core Siege routine.
+TypeScript/Node client for ECHO//FRONT. `Agent` handles WebSocket handshake and per-unit perception callbacks. Reference bots include `wandererBot`, `hunterBot`, `courierBot`, `tricksterBot` and `ghostBot`; `vanguardBot` supplies the reusable competitive example and `siegeRoutine` supplies a Core Siege routine.
 
 ## Requirements and workspace setup
 

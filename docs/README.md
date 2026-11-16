@@ -6,6 +6,7 @@ These English guides describe the implementation in this checkout. The canonical
 - [Game design](02-game-design.md): implemented resources, actions and modes.
 - [Architecture](03-arquitetura.md): workspace boundaries and data flow.
 - [Agent protocol](04-protocolo-agente.md): handshake, decisions and message validation.
+- [Reusable competitive agent](../packages/agents-sdk/examples/kleber-agent.md): connect your own named Vanguard, customize its strategy, run a reference opponent and reproduce the benchmark.
 - [Simulation and replays](05-simulacao.md): determinism, sensors and replay format.
 - [Spectator and visual design](06-espectador-e-visual.md): arena and replay controls.
 - [Competition](07-campeonato.md): matchmaking, scores and container execution.

@@ -53,6 +53,17 @@ pnpm sim:batch --n 4 --cycles 20 --botA courier --botB trickster --csv /tmp/echo
 
 CLI arguments follow the pnpm script name. See the [TypeScript SDK](packages/agents-sdk/README.md), [Python SDK](packages/agents-sdk-py/README.md) and [Dart SDK](packages/agents-sdk-dart/README.md) for agent examples. Use the local workspace; this quick start does not depend on registry publication.
 
+### Reuse the competitive agent example
+
+[Kleber Vanguard](packages/agents-sdk/examples/kleber-agent.md) is a complete, reusable example with objective collection, obstacle-aware navigation, automatic reconnection and a reproducible benchmark. After installing dependencies, run it against the public server with your own name:
+
+```bash
+pnpm --filter @echo-front/agents-sdk... build
+AGENT_NAME=my-vanguard node packages/agents-sdk/examples/kleber-agent.mjs
+```
+
+Watch [my-vanguard's live games](https://echo-front-ten.vercel.app/watch/demo?agent=my-vanguard), replacing the query name if you choose another. Matchmaking needs two agents; the guide includes a reference opponent and local-server instructions. Stop the runner with Ctrl+C. The client runs on your computer, so it must remain awake and connected while competing.
+
 ## Workspace
 
 - `apps/web`: Next.js App Router, React and PixiJS; arena, replays, leaderboard and match history.
