@@ -95,7 +95,6 @@ class Agent:
             attempt += 1
             try:
                 await self._run_once()
-                attempt = 0  # sessão terminou de forma limpa (ex.: close() explícito)
             except (ConnectionClosed, OSError) as err:
                 logger.warning("conexão perdida: %s", err)
 
@@ -107,9 +106,9 @@ class Agent:
 
             delay = min(attempt * self._opts.reconnect_backoff_s, self._opts.reconnect_max_backoff_s)
             logger.info(
-                "tentando reconectar em %.1fs (tentativa %d/%d)…",
+                "retrying in %.1fs after attempt %d/%d",
                 delay,
-                attempt + 1,
+                attempt,
                 self._opts.reconnect_max_attempts,
             )
             await asyncio.sleep(delay)
@@ -134,22 +133,42 @@ class Agent:
                 await self._maybe_await(self._opts.on_close)
 
     async def _handle_message(self, raw: "str | bytes") -> None:
-        try:
-            msg: ServerMessage = json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            return  # mensagem malformada do servidor: ignora (paridade com o SDK TS)
+        msg = self._parse_message(raw)
+        if msg is None:
+            return
 
         await self._maybe_await(self._opts.on_message, msg)
 
         msg_type = msg.get("type")
         if msg_type == "welcome":
             await self._maybe_await(self._opts.on_welcome, msg.get("payload"))
-        elif msg_type == "perception" and msg.get("unitId") is not None:
+        elif msg_type == "perception":
             decision = await self._maybe_await(self._opts.on_perception, msg["unitId"], msg.get("payload"))
-            if decision:
-                await self.send_decision(msg["unitId"], msg.get("cycle", 0), decision)
+            if decision is not None:
+                await self.send_decision(msg["unitId"], msg["cycle"], decision)
         elif msg_type == "match_end":
             self._match_ended = True
+
+    @staticmethod
+    def _parse_message(raw: str | bytes) -> Optional[ServerMessage]:
+        try:
+            msg = json.loads(raw)
+        except (json.JSONDecodeError, TypeError, UnicodeDecodeError):
+            return None
+        if not isinstance(msg, dict) or not isinstance(msg.get("type"), str):
+            return None
+        if "payload" in msg and not isinstance(msg["payload"], dict):
+            return None
+        if msg["type"] == "perception" and not Agent._valid_perception(msg):
+            return None
+        return msg
+
+    @staticmethod
+    def _valid_perception(msg: ServerMessage) -> bool:
+        unit_id, cycle = msg.get("unitId"), msg.get("cycle")
+        return (isinstance(unit_id, str) and bool(unit_id)
+                and type(cycle) is int and cycle >= 0
+                and isinstance(msg.get("payload"), dict))
 
     async def send_decision(self, unit_id: str, cycle: int, payload: Decision) -> None:
         if self._ws is None:

@@ -1,94 +1,97 @@
-# echo-front-agent-sdk
+# ECHO//FRONT Python agent SDK
 
-SDK Python para escrever agentes do [ECHO//FRONT](https://github.com/kleberandrade/echo-front) —
-conecta via WebSocket, faz o handshake do protocolo e chama sua função de
-decisão a cada percepção recebida. Equivalente ao
-[`@echo-front/agents-sdk`](https://www.npmjs.com/package/@echo-front/agents-sdk)
-em TypeScript, pra quem prefere Python.
+An asyncio WebSocket client for the ECHO//FRONT tactical arena. It sends the
+protocol handshake, delivers perceptions to your decision callback, and sends
+returned decisions. It shares protocol `0.6.0` with the TypeScript and Dart SDKs.
 
-## Instalação
+## Requirements and installation
 
-```bash
-pip install echo-front-agent-sdk
+Python 3.11+ and a running ECHO//FRONT server are required. From the repository root:
+
+```sh
+cd packages/agents-sdk-py
+python3.13 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
 ```
 
-## Uso
+Use any supported Python 3.11+ executable when creating the virtual environment.
+The SDK uses `websockets >=16,<18`; development uses pytest 9 and pytest-asyncio 1.
+
+## Quick start
+
+Start the server using the [root quick start](../../README.md), then run two
+agents in separate terminals (each with the virtual environment activated):
+
+```sh
+python examples/runner.py --name python-cyan
+python examples/runner.py --name python-magenta
+```
+
+The [executable example](examples/runner.py) moves every controlled unit at half
+speed. It demonstrates the connection lifecycle rather than a competitive strategy.
+Use `--url ws://host:3001/agent` to select another server and `--help` for options.
+Public matchmaking requires two agents; one connection waits in the queue.
+
+## Callback API
 
 ```python
-import asyncio
 from echo_front_agent_sdk import Agent, AgentOptions
 
 
-def decide(unit_id: str, perception: dict) -> dict | None:
-    # perception["sensors"]["visual" | "thermal" | "sound" | "radar" | "memory"]
-    # — ver docs/04-protocolo-agente.md
-    som = sorted(perception["sensors"]["sound"], key=lambda s: -s["intensity"])
-    if som and som[0]["intensity"] > 0.2:
-        return {"movement": {"direction": som[0]["direction"], "speed": 0.8}}
+def decide(unit_id, perception):
     return {"movement": {"direction": 0, "speed": 0.5}}
 
 
-async def main() -> None:
-    agent = Agent(AgentOptions(url="ws://localhost:3001/agent", agent_name="meu-bot", on_perception=decide))
-    await agent.connect()  # roda até a partida terminar (ou a conexão cair)
-
-
-asyncio.run(main())
-```
-
-`on_perception` pode ser uma função síncrona (como acima) ou `async def` — o
-SDK aguarda automaticamente se for uma coroutine. Retorne `None` (ou nada)
-pra deixar a unidade em no-op naquele ciclo.
-
-### Reconexão
-
-Por padrão uma queda de conexão simplesmente termina `connect()` — igual ao
-SDK TypeScript. Pra sobreviver a instabilidade de rede ou a um orquestrador
-que ainda não subiu (o cenário real que motivou isso no sandbox Docker, ver
-`apps/server/docker/sandbox-agent/agent.mjs`), ligue `reconnect=True`:
-
-```python
 agent = Agent(AgentOptions(
     url="ws://localhost:3001/agent",
-    agent_name="meu-bot",
+    agent_name="my-agent",
     on_perception=decide,
-    reconnect=True,          # backoff linear: 1s, 2s, 3s... até um teto de 5s
-    reconnect_max_attempts=30,
 ))
+# Inside an async function:
+# await agent.connect()
 ```
 
-`connect()` nunca reconecta depois de um `match_end` recebido — isso não é
-uma falha, é o fim normal da partida.
+`on_perception(unit_id, perception)` may be synchronous or asynchronous. Return a
+decision dictionary (including `{}` for an empty decision), or `None` to send
+nothing for that cycle. `on_welcome(payload)`, `on_message(message)`, and
+`on_close()` also accept synchronous or asynchronous callbacks. `token` in
+`AgentOptions` supplies an optional registered agent identity.
 
-## Diferença em relação ao SDK TypeScript
+`connect()` runs until the WebSocket session ends. Use
+`asyncio.create_task(agent.connect())` to run it concurrently. `close()` closes the
+socket and prevents further reconnection. A `match_end` suppresses reconnection;
+the session returns when the server closes its socket. Callbacks should finish
+promptly to avoid delaying later perceptions.
 
-No cliente TS, `connect()` resolve assim que o handshake é enviado e o resto
-roda em background via eventos do `ws`. Em Python, o jeito natural do
-`asyncio` é uma coroutine que roda até terminar — então aqui `connect()` só
-retorna quando a sessão (ou, com `reconnect=True`, todas as tentativas de
-reconexão) se encerra. Se precisar continuar fazendo outra coisa em
-paralelo, rode como uma task: `asyncio.create_task(agent.connect())`.
+## Reconnection and errors
 
-## Documentação
+Reconnection is disabled by default. Enable it with `reconnect=True`. The options
+`reconnect_backoff_s=1`, `reconnect_max_backoff_s=5`, and
+`reconnect_max_attempts=30` control linear backoff and the total connection attempt
+budget, including the initial attempt. Normal disconnects also consume that
+budget. A received `match_end` or explicit `close()` stops retries.
 
-Guia completo pra escrever um agente (protocolo, sensores, exemplos
-comentados): [`docs/04-protocolo-agente.md`](https://github.com/kleberandrade/echo-front/blob/main/docs/04-protocolo-agente.md).
-Guia do competidor (como validar e conectar, séries ranqueadas, pontuação):
-a página [`/compete`](https://echo-front.vercel.app/compete) do site.
+Malformed JSON and invalid message envelopes are ignored before callbacks.
+Perception envelopes require a nonempty string unit ID, nonnegative integer
+cycle, and object payload. This is basic boundary validation: the SDK does not
+replicate all Zod schemas. Perceptions and decisions remain plain dictionaries;
+the authoritative server validates decision fields. Callback exceptions propagate
+to the caller. Sending a decision without a live connection raises `RuntimeError`.
 
-Este SDK não replica os schemas de validação do protocolo (isso fica a
-cargo do `@echo-front/protocol`, em TypeScript) — percepções e decisões
-trafegam como `dict` puro; o servidor valida cada decisão enviada e responde
-com um `error` (`code: invalid_payload`) se o payload não bater com o
-schema.
+## Development and validation
 
-## Desenvolvimento
-
-```bash
-pip install -e ".[dev]"
-pytest
+```sh
+python -m pytest -q
+python examples/runner.py --help
 ```
 
-## Licença
+Tests use real loopback WebSocket connections against an in-process server; they
+cover handshake, synchronous/asynchronous decisions, no-op, malformed envelopes,
+bounded reconnection, and explicit shutdown. They require permission to bind local
+ports and do not require the NestJS server. The SDK is not a container sandbox and
+does not impose a callback execution timeout.
 
-MIT — ver [LICENSE](./LICENSE).
+See the [protocol reference](../../docs/04-protocolo-agente.md) for sensors,
+decisions, and message formats. Licensed under [MIT](LICENSE), with existing
+authorship preserved.

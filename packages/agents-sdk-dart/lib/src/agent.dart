@@ -44,7 +44,8 @@ typedef ServerMessage = Map<String, dynamic>;
 /// Callback de percepção → decisão, chamado a cada `perception` recebida.
 /// Devolva um [Decision] pra responder, ou `null` pra deixar a unidade em
 /// no-op neste ciclo. Pode ser síncrono ou devolver um `Future`.
-typedef PerceptionCallback = FutureOr<Decision?> Function(String unitId, Perception perception);
+typedef PerceptionCallback =
+    FutureOr<Decision?> Function(String unitId, Perception perception);
 
 /// Chamado quando o servidor confirma o handshake (mensagem `welcome`).
 typedef WelcomeCallback = FutureOr<void> Function(Map<String, dynamic> welcome);
@@ -122,7 +123,6 @@ class Agent {
       attempt += 1;
       try {
         await _runOnce();
-        attempt = 0; // sessão terminou de forma limpa (ex.: close() explícito)
       } catch (_) {
         // Conexão perdida (erro de rede, handshake recusado, etc.) — decide
         // abaixo se tenta de novo ou desiste, igual ao SDK Python.
@@ -143,11 +143,13 @@ class Agent {
     _channel = channel;
     try {
       await channel.ready;
-      channel.sink.add(jsonEncode({
-        'v': protocolVersion,
-        'type': 'hello',
-        'payload': {'agentName': _opts.agentName, 'token': _opts.token},
-      }));
+      channel.sink.add(
+        jsonEncode({
+          'v': protocolVersion,
+          'type': 'hello',
+          'payload': {'agentName': _opts.agentName, 'token': _opts.token},
+        }),
+      );
 
       await for (final raw in channel.stream) {
         await _handleMessage(raw);
@@ -170,6 +172,22 @@ class Agent {
       return; // mensagem malformada do servidor: ignora (paridade com os outros SDKs)
     }
 
+    if (msg['type'] is! String) return;
+    if (msg.containsKey('payload') && msg['payload'] is! Map<String, dynamic>) {
+      return;
+    }
+    if (msg['type'] == 'perception') {
+      final unitId = msg['unitId'];
+      final cycle = msg['cycle'];
+      if (unitId is! String ||
+          unitId.isEmpty ||
+          cycle is! int ||
+          cycle < 0 ||
+          msg['payload'] is! Map<String, dynamic>) {
+        return;
+      }
+    }
+
     final onMessage = _opts.onMessage;
     if (onMessage != null) await onMessage(msg);
 
@@ -184,7 +202,8 @@ class Agent {
       final onPerception = _opts.onPerception;
       if (onPerception != null) {
         final unitId = msg['unitId'] as String;
-        final perception = (msg['payload'] as Map<String, dynamic>?) ?? const {};
+        final perception =
+            (msg['payload'] as Map<String, dynamic>?) ?? const {};
         final decision = await onPerception(unitId, perception);
         if (decision != null) {
           final cycle = (msg['cycle'] as num?)?.toInt() ?? 0;
@@ -201,15 +220,19 @@ class Agent {
   void sendDecision(String unitId, int cycle, Decision payload) {
     final channel = _channel;
     if (channel == null) {
-      throw StateError('sendDecision chamado sem conexão ativa — chame connect() primeiro.');
+      throw StateError(
+        'sendDecision chamado sem conexão ativa — chame connect() primeiro.',
+      );
     }
-    channel.sink.add(jsonEncode({
-      'v': protocolVersion,
-      'type': 'decision',
-      'unitId': unitId,
-      'cycle': cycle,
-      'payload': payload,
-    }));
+    channel.sink.add(
+      jsonEncode({
+        'v': protocolVersion,
+        'type': 'decision',
+        'unitId': unitId,
+        'cycle': cycle,
+        'payload': payload,
+      }),
+    );
   }
 
   /// Fecha a conexão e desliga a reconexão automática, se houver.

@@ -1,11 +1,11 @@
 [project]
 name = "echo-front-agent-sdk"
 version = "0.1.0"
-description = "SDK Python para escrever agentes do ECHO//FRONT (equivalente ao @echo-front/agents-sdk em TypeScript)."
+description = "Python WebSocket agent client for the ECHO//FRONT tactical arena."
 readme = "README.md"
 license = "MIT"
 authors = [{ name = "Kleber Andrade" }]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 keywords = ["echo-front", "ai-agents", "bot-sdk", "websocket"]
 classifiers = [
   "License :: OSI Approved :: MIT License",
@@ -13,7 +13,7 @@ classifiers = [
   "Topic :: Games/Entertainment",
   "Framework :: AsyncIO",
 ]
-dependencies = ["websockets>=12"]
+dependencies = ["websockets>=16,<18"]
 
 [project.urls]
 Homepage = "https://github.com/kleberandrade/echo-front/tree/main/packages/agents-sdk-py#readme"
@@ -22,7 +22,7 @@ Issues = "https://github.com/kleberandrade/echo-front/issues"
 Documentation = "https://github.com/kleberandrade/echo-front/blob/main/docs/04-protocolo-agente.md"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-asyncio>=0.24"]
+dev = ["pytest>=9,<10", "pytest-asyncio>=1,<2"]
 
 [build-system]
 requires = ["hatchling"]
@@ -33,3 +33,4 @@ packages = ["src/echo_front_agent_sdk"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

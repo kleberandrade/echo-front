@@ -176,3 +176,74 @@ async def test_close_stops_reconnect_loop():
     await asyncio.sleep(0.05)
     await agent.close()
     await asyncio.wait_for(task, timeout=5)
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("raw", ["null", "[]", "42", '"text"', '{"type":"perception","unitId":4,"cycle":0,"payload":{}}', '{"type":"perception","unitId":"u1","cycle":-1,"payload":{}}', '{"type":"perception","unitId":"u1","cycle":0,"payload":[]}'])
+async def test_invalid_envelope_is_ignored_before_callbacks(raw):
+    messages = []
+
+    async def handler(ws):
+        await ws.recv()
+        await ws.send(raw)
+        await ws.send(json.dumps({"type": "match_end", "payload": {}}))
+
+    server, url = await _serve(handler)
+    try:
+        agent = Agent(AgentOptions(url=url, agent_name="a", on_message=messages.append))
+        await asyncio.wait_for(agent.connect(), timeout=2)
+        assert [message["type"] for message in messages] == ["match_end"]
+    finally:
+        server.close()
+        await server.wait_closed()
+
+
+@pytest.mark.asyncio
+async def test_clean_disconnects_also_exhaust_reconnection_budget():
+    connections = []
+
+    async def handler(ws):
+        await ws.recv()
+        connections.append(1)
+
+    server, url = await _serve(handler)
+    agent = Agent(AgentOptions(url=url, agent_name="a", reconnect=True,
+        reconnect_max_attempts=3, reconnect_backoff_s=0.01))
+    try:
+        await asyncio.wait_for(agent.connect(), timeout=1)
+        assert len(connections) == 3
+    finally:
+        await agent.close()
+        server.close()
+        await server.wait_closed()
+
+
+@pytest.mark.asyncio
+async def test_empty_decision_is_sent_and_match_end_stops_reconnecting():
+    decisions = []
+    connections = []
+
+    async def handler(ws):
+        await ws.recv()
+        connections.append(1)
+        await ws.send(json.dumps({"type": "perception", "unitId": "u1", "cycle": 0, "payload": {}}))
+        decisions.append(json.loads(await ws.recv()))
+        await ws.send(json.dumps({"type": "match_end", "payload": {}}))
+
+    server, url = await _serve(handler)
+    try:
+        agent = Agent(AgentOptions(url=url, agent_name="a", reconnect=True,
+            on_perception=lambda u, p: {}))
+        await asyncio.wait_for(agent.connect(), timeout=2)
+        assert len(connections) == 1
+        assert decisions[0]["payload"] == {}
+        assert decisions[0]["cycle"] == 0
+    finally:
+        server.close()
+        await server.wait_closed()
+
+
+@pytest.mark.asyncio
+async def test_decision_requires_an_active_connection():
+    agent = Agent(AgentOptions(url="ws://localhost:1/agent", agent_name="a"))
+    with pytest.raises(RuntimeError):
+        await agent.send_decision("u1", 0, {})

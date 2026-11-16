@@ -1,105 +1,98 @@
-# echo_front_agent_sdk
+# ECHO//FRONT Dart agent SDK
 
-SDK Dart para escrever agentes do [ECHO//FRONT](https://github.com/kleberandrade/echo-front) —
-conecta via WebSocket, faz o handshake do protocolo e chama sua função de
-decisão a cada percepção recebida. Equivalente ao
-[`@echo-front/agents-sdk`](https://www.npmjs.com/package/@echo-front/agents-sdk)
-(TypeScript) e ao
-[`echo-front-agent-sdk`](https://pypi.org/project/echo-front-agent-sdk/)
-(Python), pra quem prefere Dart — incluindo pra agentes escritos em Flutter.
+A WebSocket client for the ECHO//FRONT tactical arena. It sends the handshake,
+delivers perceptions, and sends decisions returned by your callback. Protocol
+version `0.6.0` is shared with the TypeScript and Python SDKs.
 
-## Instalação
+## Requirements and installation
 
-```bash
-dart pub add echo_front_agent_sdk
+Dart 3.11+ (below 4.0), a running ECHO//FRONT server, and access to pub.dev:
+
+```sh
+cd packages/agents-sdk-dart
+dart pub get
 ```
 
-## Uso
+For another Dart project, reference this checkout using a path dependency:
+
+```yaml
+dependencies:
+  echo_front_agent_sdk:
+    path: ../echo-front/packages/agents-sdk-dart
+```
+
+## Quick start
+
+Start the server with the [root quick start](../../README.md). From this SDK
+folder, start two agents in separate terminals:
+
+```sh
+dart run example/runner.dart ws://localhost:3001/agent dart-cyan
+dart run example/runner.dart ws://localhost:3001/agent dart-magenta
+```
+
+The [executable example](example/runner.dart) moves units at half speed; it is a
+connection example rather than a competitive strategy. Run it with `--help` for
+usage. Public matchmaking waits for a second agent.
+
+## Callback API
 
 ```dart
 import 'package:echo_front_agent_sdk/echo_front_agent_sdk.dart';
 
-Decision? decide(String unitId, Perception perception) {
-  // perception['sensors']['visual' | 'thermal' | 'sound' | 'radar' | 'memory']
-  // — ver docs/04-protocolo-agente.md
-  final sound = (perception['sensors']['sound'] as List).cast<Map<String, dynamic>>()
-    ..sort((a, b) => (b['intensity'] as num).compareTo(a['intensity'] as num));
-  if (sound.isNotEmpty && (sound.first['intensity'] as num) > 0.2) {
-    return {
-      'movement': {'direction': sound.first['direction'], 'speed': 0.8},
-    };
-  }
-  return {
-    'movement': {'direction': 0, 'speed': 0.5},
-  };
-}
-
 Future<void> main() async {
   final agent = Agent(AgentOptions(
     url: 'ws://localhost:3001/agent',
-    agentName: 'meu-bot',
-    onPerception: decide,
+    agentName: 'my-agent',
+    onPerception: (unitId, perception) => {
+      'movement': {'direction': 0, 'speed': 0.5},
+    },
   ));
-  await agent.connect(); // roda até a partida terminar (ou a conexão cair)
+  await agent.connect();
 }
 ```
 
-`onPerception` pode devolver um `Decision` diretamente ou um
-`Future<Decision?>` — o SDK aguarda automaticamente os dois casos. Devolva
-`null` pra deixar a unidade em no-op naquele ciclo.
+`onPerception(unitId, perception)` can return `Decision?` or `Future<Decision?>`.
+Return `null` to send nothing for a cycle. `onWelcome(payload)`,
+`onMessage(message)`, and `onClose()` support synchronous or asynchronous callbacks.
+The optional `token` identifies a registered agent.
 
-### Reconexão
+`connect()` completes when the session ends. To run concurrently, use
+`unawaited(agent.connect())` with `dart:async`. `close()` shuts down the socket and
+prevents retries. Receiving `match_end` suppresses reconnection; the session ends
+when the server closes the socket. Callbacks should finish promptly.
 
-Por padrão uma queda de conexão simplesmente termina `connect()` — igual aos
-SDKs TypeScript e Python. Pra sobreviver a instabilidade de rede ou a um
-orquestrador que ainda não subiu, ligue `reconnect: true`:
+## Reconnection, validation, and limitations
 
-```dart
-final agent = Agent(AgentOptions(
-  url: 'ws://localhost:3001/agent',
-  agentName: 'meu-bot',
-  onPerception: decide,
-  reconnect: true, // backoff linear: 1s, 2s, 3s... até um teto de 5s
-  reconnectMaxAttempts: 30,
-));
-```
+Reconnection defaults to false. Enable `reconnect: true` to use linear backoff
+(`reconnectBackoff`, default one second), capped by `reconnectMaxBackoff` (five
+seconds). `reconnectMaxAttempts` defaults to 30 total connection attempts, including
+the first. Clean disconnects also consume the budget. A received `match_end` or
+explicit `close()` stops retries.
 
-`connect()` nunca reconecta depois de um `match_end` recebido — isso não é
-uma falha, é o fim normal da partida.
+Malformed JSON, binary frames, and invalid message envelopes are ignored before
+callbacks. Perceptions require a nonempty string unit ID, a nonnegative integer
+cycle, and an object payload. Complete schema validation belongs to the
+TypeScript protocol package and authoritative server; Dart payloads remain
+`Map<String, dynamic>`. `sendDecision` without a connection throws `StateError`.
+The existing connection loop catches session failures, including callback errors;
+use application logging in callbacks when diagnosing failures. The SDK does not
+enforce a callback execution deadline or provide an execution sandbox.
 
-## Diferença em relação aos SDKs TypeScript e Python
+## Tests and analysis
 
-No cliente TS, `connect()` resolve assim que o handshake é enviado e o resto
-roda em background via eventos do `ws`. Aqui — como no SDK Python — a
-`Future` de `connect()` só completa quando a sessão (ou, com
-`reconnect: true`, todas as tentativas de reconexão) se encerra. Se precisar
-continuar fazendo outra coisa em paralelo, não dê `await` nela diretamente:
-
-```dart
-unawaited(agent.connect());
-```
-
-## Documentação
-
-Guia completo pra escrever um agente (protocolo, sensores, exemplos
-comentados): [`docs/04-protocolo-agente.md`](https://github.com/kleberandrade/echo-front/blob/main/docs/04-protocolo-agente.md).
-Guia do competidor (como validar e conectar, séries ranqueadas, pontuação):
-a página [`/compete`](https://echo-front.vercel.app/compete) do site.
-
-Este SDK não replica os schemas de validação do protocolo (isso fica a
-cargo do `@echo-front/protocol`, em TypeScript) — percepções e decisões
-trafegam como `Map<String, dynamic>` puro; o servidor valida cada decisão
-enviada e responde com um `error` (`code: invalid_payload`) se o payload não
-bater com o schema.
-
-## Desenvolvimento
-
-```bash
+```sh
 dart pub get
-dart test
 dart analyze
+dart test
+dart run example/runner.dart --help
 ```
 
-## Licença
+Tests open real loopback sockets with an in-process server and verify handshake,
+synchronous/asynchronous callbacks, no-op, malformed messages, bounded retries,
+and shutdown. No running NestJS server is needed; permission to bind local ports
+is required. Keep `pubspec.lock` to reproduce the validated development graph.
+The browser/Flutter runtime has not been separately tested by these VM tests.
 
-MIT — ver [LICENSE](./LICENSE).
+See the [protocol reference](../../docs/04-protocolo-agente.md) for schemas,
+sensors, and decisions. Licensed under [MIT](LICENSE), preserving existing authorship.
