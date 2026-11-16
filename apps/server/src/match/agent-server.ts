@@ -184,7 +184,8 @@ export class LiveMatch {
     }
   }
 
-  submitDecision(team: Team, unitId: string, payload: DecisionPayload): boolean {
+  submitDecision(team: Team, unitId: string, payload: DecisionPayload, cycle?: number): boolean {
+    if (this.finished || (cycle !== undefined && cycle !== this.state.cycle)) return false;
     const unit = this.state.units.find((u) => u.id === unitId);
     if (!unit || unit.team !== team || !unit.alive) return false;
     this.decisions[unitId] = payload;
@@ -525,7 +526,7 @@ export class AgentServer {
     }
     if (msg.unitId !== undefined) {
       const team = match.seats.cian.ws === ws ? 'cian' : 'magenta';
-      match.submitDecision(team, msg.unitId, msg.payload);
+      match.submitDecision(team, msg.unitId, msg.payload, msg.cycle);
     }
   }
 
@@ -541,7 +542,8 @@ export class AgentServer {
         this.latest = m;
       },
       () => {
-        /* série concluída; sockets podem encerrar */
+        this.bySocket.delete(a.ws);
+        this.bySocket.delete(b.ws);
       },
       () => void this.refreshEloCache(),
     );
@@ -580,6 +582,7 @@ export class AgentServer {
   }
 
   private onHello(ws: WebSocket, name: string): void {
+    if (ws.readyState !== ws.OPEN || this.bySocket.has(ws)) return;
     if (this.waitingQueue.some((w) => w.ws === ws)) return; // hello duplicado — já está na fila
     this.waitingQueue.push({ ws, name });
     if (this.opts.matchmakingWindowMs <= 0) {

@@ -13,7 +13,7 @@
  * de volta, replay round-trip via BEGIN/COMMIT, etc).
  */
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { replayFromJsonl, type Replay } from '@echo-front/sim';
 import { PgMatchStore } from './store-pg.js';
 import type { MatchResult } from './store.js';
@@ -55,12 +55,12 @@ describe.skipIf(!DATABASE_URL)('PgMatchStore (sprint-15)', () => {
   // agente/matchId precisam não colidir entre runs.
   const prefix = randomUUID().slice(0, 8);
 
-  beforeEach(() => {
+  beforeAll(() => {
     store = new PgMatchStore(DATABASE_URL!);
   });
 
   afterAll(async () => {
-    if (DATABASE_URL) await new PgMatchStore(DATABASE_URL).close();
+    await store?.close();
   });
 
   it('registerAgent é idempotente por nome (mesmo token em chamadas repetidas)', async () => {
@@ -144,8 +144,11 @@ describe.skipIf(!DATABASE_URL)('PgMatchStore (sprint-15)', () => {
     const name = `${prefix}-persist`;
     await store.registerAgent(name);
     const reopened = new PgMatchStore(DATABASE_URL!);
-    const agents = await reopened.listAgents();
-    expect(agents.some((a) => a.name === name)).toBe(true);
-    await reopened.close();
+    try {
+      const agents = await reopened.listAgents();
+      expect(agents.some((a) => a.name === name)).toBe(true);
+    } finally {
+      await reopened.close();
+    }
   });
 });

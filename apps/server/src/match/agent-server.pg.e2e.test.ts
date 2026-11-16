@@ -9,7 +9,7 @@
 import { randomUUID } from 'node:crypto';
 import { WebSocketServer } from 'ws';
 import { Pool } from 'pg';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import { Agent, hunterBot, wandererBot } from '@echo-front/agents-sdk';
 import { DEFAULT_CONFIG, replayFromJsonl, resimulate } from '@echo-front/sim';
 import type { MatchEndPayload } from '@echo-front/protocol';
@@ -44,6 +44,14 @@ describe.skipIf(!DATABASE_URL)('AgentServer e2e com PgMatchStore (sprint-15)', (
   it('série ranqueada persistida no Postgres: matchmaking, recordResult, standings e replay batem', async () => {
     const prefix = randomUUID().slice(0, 8);
 
+    // Create the schema before cleanup: a fresh CI database has no tables yet.
+    const bootstrapStore = new PgMatchStore(DATABASE_URL!);
+    try {
+      await bootstrapStore.listResults();
+    } finally {
+      await bootstrapStore.close();
+    }
+
     // `AgentServer` numera séries sequencialmente a partir de 1 ("s1",
     // "s2", ...) por instância — como este teste sempre cria uma instância
     // nova, o matchId da primeira série é sempre "s1-g1"/"s1-g2", igual em
@@ -55,10 +63,13 @@ describe.skipIf(!DATABASE_URL)('AgentServer e2e com PgMatchStore (sprint-15)', (
     // estado limpo, independente do que rodou antes nesse banco.
     const cleanupPool = new Pool({ connectionString: DATABASE_URL });
     const deterministicMatchIds = Array.from({ length: GAMES }, (_, i) => `s1-g${i + 1}`);
-    await cleanupPool.query('delete from results where match_id = any($1)', [
-      deterministicMatchIds,
-    ]);
-    await cleanupPool.end();
+    try {
+      await cleanupPool.query('delete from results where match_id = any($1)', [
+        deterministicMatchIds,
+      ]);
+    } finally {
+      await cleanupPool.end();
+    }
 
     const server = new AgentServer();
     server.configure({
@@ -69,6 +80,7 @@ describe.skipIf(!DATABASE_URL)('AgentServer e2e com PgMatchStore (sprint-15)', (
       interGameMs: 50,
       seedFor: (sid, k) => `pg-e2e-${sid}-${k}`,
     });
+    onTestFinished(async () => (server.store as PgMatchStore).close());
     const wss = new WebSocketServer({ port: 0, path: '/agent' });
     wss.on('connection', (ws) => server.attachAgentSocket(ws));
     await new Promise<void>((r) => wss.on('listening', () => r()));
@@ -113,7 +125,5 @@ describe.skipIf(!DATABASE_URL)('AgentServer e2e com PgMatchStore (sprint-15)', (
 
     // Cache de Elo do matchmaking (síncrono) reflete o resultado gravado no Postgres.
     await server.refreshEloCache();
-
-    await new PgMatchStore(DATABASE_URL!).close();
   }, 30000);
 });
