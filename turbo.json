@@ -18,7 +18,7 @@
       "cache": false,
       "persistent": true,
       "env": ["NEXT_PUBLIC_ECHO_API", "NEXT_PUBLIC_ECHO_WS", "NEXT_PUBLIC_SITE_URL"],
-      "passThroughEnv": ["PORT", "DATABASE_URL"]
+      "passThroughEnv": ["PORT", "DATABASE_URL", "ECHO_DEMO_ENABLED", "ECHO_WEB_ORIGIN"]
     },
     "@echo-front/sim#test": {
       "dependsOn": ["build"]

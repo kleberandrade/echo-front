@@ -32,6 +32,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@echo-front/agents-sdk':
+        specifier: workspace:*
+        version: link:../../packages/agents-sdk
       '@echo-front/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -69,9 +72,6 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
     devDependencies:
-      '@echo-front/agents-sdk':
-        specifier: workspace:*
-        version: link:../../packages/agents-sdk
       '@types/node':
         specifier: ^24.19.2
         version: 24.19.2
