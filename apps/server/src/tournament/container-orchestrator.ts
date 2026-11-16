@@ -81,11 +81,15 @@ export class ContainerOrchestrator {
    * pro host — é o único destino que uma rede `--internal` garante alcançável.
    */
   async ensureNetwork(): Promise<void> {
-    const exists = await this.runner
-      .run('docker', ['network', 'inspect', this.limits.networkName])
-      .then(() => true)
-      .catch(() => false);
-    if (exists) return;
+    const inspection = await this.runner
+      .run('docker', ['network', 'inspect', '--format', '{{.Internal}}', this.limits.networkName])
+      .catch(() => undefined);
+    if (inspection) {
+      if (inspection.stdout.trim() !== 'true') {
+        throw new Error(`Sandbox network "${this.limits.networkName}" must be internal.`);
+      }
+      return;
+    }
     await this.runner.run('docker', this.networkCreateArgs());
   }
 

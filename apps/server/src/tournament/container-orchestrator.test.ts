@@ -14,6 +14,7 @@ class FakeRunner implements CommandRunner {
   calls: { cmd: string; args: string[] }[] = [];
   /** Simula `docker network inspect` falhando (rede ainda não existe) na 1ª chamada. */
   networkExists = false;
+  networkInspection = 'true\n';
   failNextRun = false;
 
   async run(cmd: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
@@ -24,6 +25,9 @@ class FakeRunner implements CommandRunner {
     if (this.failNextRun) {
       this.failNextRun = false;
       throw new Error('docker: falha simulada');
+    }
+    if (args[0] === 'network' && args[1] === 'inspect') {
+      return { stdout: this.networkInspection, stderr: '' };
     }
     return { stdout: '', stderr: '' };
   }
@@ -79,6 +83,27 @@ describe('ContainerOrchestrator — argumentos de comando', () => {
 });
 
 describe('ContainerOrchestrator — ciclo de vida', () => {
+  it.each(['false\n', '', 'not-a-boolean', 'TRUE', '1'])(
+    'refuses to start an agent when the existing network inspection is %j',
+    async (inspection) => {
+      const runner = new FakeRunner();
+      runner.networkExists = true;
+      runner.networkInspection = inspection;
+      const orch = new ContainerOrchestrator(DEFAULT_SANDBOX_LIMITS, runner);
+      await expect(
+        orch.start({ image: 'img', containerName: 'c1', wsUrl: 'ws://x/agent', agentName: 'a' }),
+      ).rejects.toThrow('must be internal');
+      expect(runner.calls).toHaveLength(1);
+      expect(runner.calls[0]?.args).toEqual([
+        'network',
+        'inspect',
+        '--format',
+        '{{.Internal}}',
+        DEFAULT_SANDBOX_LIMITS.networkName,
+      ]);
+    },
+  );
+
   it('ensureNetwork cria a rede --internal só quando ainda não existe', async () => {
     const runner = new FakeRunner();
     const orch = new ContainerOrchestrator(DEFAULT_SANDBOX_LIMITS, runner);
