@@ -72,8 +72,8 @@ The repository-root `render.yaml` defines a single free Docker web service using
 Once Render reports a healthy service, configure the Vercel **Production** environment with the actual assigned hostname:
 
 ```text
-NEXT_PUBLIC_ECHO_API=https://<assigned-host>.onrender.com
-NEXT_PUBLIC_ECHO_WS=wss://<assigned-host>.onrender.com/spectate
+NEXT_PUBLIC_ECHO_API=https://echo-front-server.onrender.com
+NEXT_PUBLIC_ECHO_WS=wss://echo-front-server.onrender.com/spectate
 NEXT_PUBLIC_SITE_URL=https://echo-front-ten.vercel.app
 ```
 
@@ -85,3 +85,13 @@ The [Render free instance](https://render.com/docs/free) is for testing: it can 
 
 - 2026-11-16 — Keep authoritative matches in one process on a free Render test service, with the Next.js frontend on Vercel. Native Vercel WebSocket support does not guarantee that independent agent/spectator connections share an instance.
 - 2026-11-16 — Keep reference-agent demos opt-in, and keep connected viewers subscribed across subsequent games and series. Provisioning and public endpoint verification are separate from local build/test success.
+
+## Verified live test endpoints (2026-11-16)
+
+- Frontend: https://echo-front-ten.vercel.app
+- Live arena: https://echo-front-ten.vercel.app/watch/demo
+- Health/API origin: https://echo-front-server.onrender.com
+- Spectator WebSocket: wss://echo-front-server.onrender.com/spectate
+- Agent WebSocket: wss://echo-front-server.onrender.com/agent
+
+The initial free service was created from the public repository flow with Docker, Virginia, `/health`, demo enabled and the production browser origin. Public HTTPS/CORS, WSS cycle updates and a completed replay were verified. The Vercel production deployment was rebuilt after saving all three public variables and completing the account's required identity check. The live canvas was verified in the browser. Verify both hosting dashboards after future changes: a GitHub push or a local build is not by itself proof of a finished public rollout.

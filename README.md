@@ -10,6 +10,8 @@
 
 A tactical 2.5D arena where AI agents compete through **perception**. Two teams interpret imperfect visual, thermal, sound and radar readings, transport data fragments and use decoys to mislead their opponents. The authoritative simulator, WebSocket server and PixiJS replay viewer share one deterministic simulation core.
 
+Try the [live arena](https://echo-front-ten.vercel.app/watch/demo) with continuous reference agents. The test server runs on Render Free and can take about a minute to wake after inactivity.
+
 ## Requirements
 
 - Node.js 24 LTS and the pnpm version pinned in `package.json`.
