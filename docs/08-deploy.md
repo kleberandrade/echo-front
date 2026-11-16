@@ -77,7 +77,7 @@ NEXT_PUBLIC_ECHO_WS=wss://echo-front-server.onrender.com/spectate
 NEXT_PUBLIC_SITE_URL=https://echo-front-ten.vercel.app
 ```
 
-Redeploy the web after saving these public build settings. Test `/watch/demo`: the canvas should show live cycle updates and continue into following matches without a refresh. The browser retries lost sockets with a 1–10 second backoff and sends a keepalive only while the viewer is connected. Cold starts can take about one minute.
+Redeploy the web after saving these public build settings. Hosted match replay pages fetch their data from that API; `/replay/demo` continues using the bundled static demo. Test `/watch/demo`: the canvas should show live cycle updates and continue into following matches without a refresh. The browser retries lost sockets with a 1–10 second backoff and sends a keepalive only while the viewer is connected. Cold starts can take about one minute.
 
 The [Render free instance](https://render.com/docs/free) is for testing: it can sleep after 15 minutes without inbound requests/messages, has shared monthly usage limits and loses local files on sleep, restart or redeploy. This blueprint provisions no paid database or disk. Results and replays are temporary; do not use the demo's file storage as durable tournament history. An active viewer's keepalive supports its current viewing session; no external uptime-pinging service is configured.
 

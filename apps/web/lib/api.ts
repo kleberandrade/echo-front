@@ -33,7 +33,18 @@ export interface MatchRow {
 
 const API = process.env.NEXT_PUBLIC_ECHO_API ?? '';
 
-export async function fetchStandings(): Promise<{ standings: StandingRow[]; generatedAt?: string }> {
+/** The bundled demo is always local; live history resolves against its owning server. */
+export function replayUrl(matchId: string): string {
+  const id = encodeURIComponent(matchId);
+  return API && matchId !== 'demo'
+    ? `${API.replace(/\/+$/, '')}/api/matches/${id}/replay`
+    : `/replays/${id}.replay.jsonl`;
+}
+
+export async function fetchStandings(): Promise<{
+  standings: StandingRow[];
+  generatedAt?: string;
+}> {
   const url = API ? `${API}/api/leaderboard` : '/data/standings.json';
   const r = await fetch(url);
   if (!r.ok) throw new Error(`leaderboard indisponível (${r.status})`);

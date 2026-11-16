@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import ReplayViewer from '../../../components/ReplayViewer';
+import { replayUrl } from '../../../lib/api';
 
 export default async function ReplayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,7 +12,7 @@ export default async function ReplayPage({ params }: { params: Promise<{ id: str
         </Link>
         <span className="tracking-[0.3em] text-slate-500">REPLAY · {id}</span>
       </header>
-      <ReplayViewer replayUrl={`/replays/${id}.replay.jsonl`} />
+      <ReplayViewer replayUrl={replayUrl(id)} />
     </main>
   );
 }
