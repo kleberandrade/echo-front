@@ -7,8 +7,37 @@ import { describe, expect, it } from 'vitest';
 import {
   ContainerOrchestrator,
   DEFAULT_SANDBOX_LIMITS,
+  ExecCommandRunner,
   type CommandRunner,
 } from './container-orchestrator.js';
+
+describe('ExecCommandRunner — real child processes', () => {
+  const runner = new ExecCommandRunner();
+
+  it('returns both output streams from a successful command', async () => {
+    await expect(
+      runner.run(process.execPath, [
+        '-e',
+        'process.stdout.write("out"); process.stderr.write("warn")',
+      ]),
+    ).resolves.toEqual({ stdout: 'out', stderr: 'warn' });
+  });
+
+  it('reports stderr when a command fails', async () => {
+    await expect(
+      runner.run(process.execPath, [
+        '-e',
+        'process.stderr.write("sandbox-start-failed"); process.exit(2)',
+      ]),
+    ).rejects.toThrow('sandbox-start-failed');
+  });
+
+  it('reports failures even when a command writes no stderr', async () => {
+    await expect(runner.run(process.execPath, ['-e', 'process.exit(2)'])).rejects.toThrow(
+      'Command failed',
+    );
+  });
+});
 
 class FakeRunner implements CommandRunner {
   calls: { cmd: string; args: string[] }[] = [];

@@ -1,18 +1,8 @@
 /**
- * Orquestrador de containers para o torneio oficial (sprint-11), conforme o
- * contrato de docs/07-campeonato.md:
- *
- *   "Imagem expõe um processo que conecta ao WS local do orquestrador
- *    (AGENT_WS_URL via env). Limites de referência: 1 vCPU, 512 MB, sem rede
- *    externa, 350 ms por decisão."
- *
- * `350 ms por decisão` é responsabilidade do protocolo/AgentServer (timeout
- * de ciclo), não deste orquestrador — aqui cuidamos do isolamento do
- * PROCESSO: CPU, memória, PIDs, capacidades e rede.
- *
- * O comando `docker` é injetável (`CommandRunner`) para permitir testar a
- * construção dos argumentos sem depender de um daemon Docker real — o
- * padrão default usa `child_process.execFile`.
+ * Container lifecycle and process limits for tournament agents.
+ * The server and agents must share an internal network. AgentServer owns
+ * cycle timing; this layer enforces CPU, memory, PID, capability and network
+ * settings. CommandRunner keeps command construction independently testable.
  */
 import { execFile } from 'node:child_process';
 
