@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { parseSpectateMessage } from '@echo-front/protocol';
 import type { MatchState } from '@echo-front/sim';
 import ArenaView, { type ViewMode } from './ArenaView';
+import { connectLive } from '../lib/live-connection';
 
 export default function LiveViewer({ wsUrl }: { wsUrl: string }) {
   const [pair, setPair] = useState<{ prev: MatchState; cur: MatchState } | null>(null);
@@ -21,29 +22,32 @@ export default function LiveViewer({ wsUrl }: { wsUrl: string }) {
   const lastAtRef = useRef(0);
 
   useEffect(() => {
-    const ws = new WebSocket(wsUrl);
-    ws.onopen = () => setStatus('conectado — aguardando partida');
-    ws.onclose = () => setStatus('desconectado');
-    ws.onerror = () => setStatus(`sem conexão com ${wsUrl}`);
-    ws.onmessage = (ev) => {
-      try {
-        // Canal formalizado no protocolo 0.3.0 (SpectateMessageSchema).
-        const msg = parseSpectateMessage(ev.data as string);
-        if (msg.type === 'spectate_state') {
-          const state = msg.state as unknown as MatchState;
-          setPair((p) => ({ prev: p?.cur ?? state, cur: state }));
-          lastAtRef.current = performance.now();
-          setStatus('ao vivo');
-        } else if (msg.type === 'spectate_idle') {
-          setStatus(msg.message);
-        } else {
-          setStatus(`fim de partida — vencedor: ${msg.winner} (${msg.finalHash.slice(0, 8)}…)`);
+    return connectLive({
+      url: wsUrl,
+      onStatus: (connection) => {
+        if (connection === 'connecting') setStatus('conectando ao servidor…');
+        else if (connection === 'connected') setStatus('conectado — aguardando partida');
+        else setStatus('reconectando — o servidor pode levar um momento para iniciar…');
+      },
+      onMessage: (data) => {
+        try {
+          // Canal formalizado no protocolo 0.3.0 (SpectateMessageSchema).
+          const msg = parseSpectateMessage(data);
+          if (msg.type === 'spectate_state') {
+            const state = msg.state as unknown as MatchState;
+            setPair((p) => ({ prev: p?.cur ?? state, cur: state }));
+            lastAtRef.current = performance.now();
+            setStatus('ao vivo');
+          } else if (msg.type === 'spectate_idle') {
+            setStatus(msg.message);
+          } else {
+            setStatus(`fim de partida — vencedor: ${msg.winner} (${msg.finalHash.slice(0, 8)}…)`);
+          }
+        } catch {
+          /* frame fora do schema: ignora */
         }
-      } catch {
-        /* frame fora do schema: ignora */
-      }
-    };
-    return () => ws.close();
+      },
+    });
   }, [wsUrl]);
 
   // Interpolação: progresso 0→1 dentro dos ~500 ms entre estados.
@@ -94,8 +98,8 @@ export default function LiveViewer({ wsUrl }: { wsUrl: string }) {
         </>
       ) : (
         <div className="flex h-64 items-center justify-center border border-dashed border-slate-700 text-sm text-slate-600">
-          para uma partida local: pnpm --filter @echo-front/server start && pnpm --filter
-          @echo-front/agents-sdk match
+          Aguardando a próxima partida. A transmissão começará automaticamente quando os agentes
+          entrarem na arena.
         </div>
       )}
     </div>

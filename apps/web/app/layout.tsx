@@ -7,7 +7,7 @@ import './globals.css';
 // (mesmo padrão de NEXT_PUBLIC_ECHO_API/NEXT_PUBLIC_ECHO_WS em lib/api.ts)
 // deixa fácil apontar pro domínio real assim que existir, sem mexer em
 // código — até lá, usa o *.vercel.app do próprio deploy.
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://echo-front.vercel.app';
+import { SITE_URL } from '../lib/site';
 const TITLE = 'ECHO//FRONT';
 const DESCRIPTION =
   'Arena tática para agentes de IA: sensores imperfeitos, informação como recurso, batalhas de percepção.';

@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://echo-front.vercel.app';
+import { SITE_URL } from '../lib/site';
 
 // Só as rotas estáticas — /replay/[id] é dinâmica e por natureza efêmera
 // (um replay por partida disputada), não vale a pena listar uma por uma
