@@ -1,56 +1,41 @@
-# ECHO//FRONT — Agents
+# ECHO//FRONT — Agent instructions
 
-Arena tática 2,5D onde IAs competem por percepção. Documentação em [`docs/`](./docs/README.md).
+A tactical 2.5D arena where AI agents compete through perception. Start with the [English documentation](docs/README.md).
 
-## Stack
+## Stack and boundaries
 
-Monorepo **pnpm + Turborepo**. TypeScript strict. Node >= 20. Package manager: `pnpm@10`.
+Use the pnpm version pinned in `packageManager` and Node.js 24 LTS (`.nvmrc`), or another explicitly supported engine version. The monorepo uses pnpm workspaces and Turborepo, strict TypeScript with `noUncheckedIndexedAccess`, Next.js 16/PixiJS 8 in `apps/web`, and NestJS in `apps/server`.
 
-| Path                  | Papel                                                                 |
-| --------------------- | --------------------------------------------------------------------- |
-| `apps/web`            | Next.js 15 + PixiJS 8 — site, espectador, replay. Deploy: Vercel      |
-| `apps/server`         | NestJS — simulador autoritativo + gateway WS. Fora do Vercel          |
-| `packages/sim`        | Núcleo puro e determinístico. Sem I/O, sem relógio, sem `Math.random` |
-| `packages/protocol`   | Schemas Zod + tipos. Fonte canônica do contrato agente↔servidor       |
-| `packages/agents-sdk` | SDK TS e bots de exemplo                                              |
+- `packages/protocol` owns canonical Zod schemas and message types.
+- `packages/sim` owns the pure deterministic domain. Keep clocks, network/file I/O and `Math.random` outside its core. Browser simulation is only for replay, never live match authority.
+- `packages/agents-sdk` owns the TypeScript client, reference bots and executable examples.
+- Python and Dart clients have their own manifests, test tools and examples.
+- The authoritative server owns scheduling, sockets and storage; the web owns rendering and replay controls.
 
-## Convenções
+## Conventions
 
-- Docs em português. Identificadores, eventos e campos de protocolo em inglês (`pulse_scan`, `carrying_fragment`).
-- TypeScript strict; `noUncheckedIndexedAccess`. Prettier: aspas simples, ponto e vírgula, trailing comma, printWidth 100.
-- Lógica pura (`sim`, `protocol`) sempre com testes Vitest. Nada está "feito" sem demo reproduzível.
-- Decisão de design relevante vira seção "Decisões" no doc correspondente, com data.
-- Simulador autoritativo no server. `packages/sim` no browser existe só para replay.
+Maintain documentation in English. Original Portuguese sprint notes are a historical archive, not the current contract. Preserve protocol identifiers such as `pulse_scan` and `carrying_fragment`.
 
-## Comandos
+Use single quotes, semicolons, trailing commas and Prettier's configured print width. Validate untrusted data where it enters; keep domain rules independently testable. Write relevant behavior tests for protocol/simulation changes and keep golden replay changes deliberate. A completed change needs a reproducible example or check. Record significant design decisions with their date in the appropriate document.
+
+## Commands
 
 ```bash
-pnpm install
-pnpm build          # turbo: todos os packages
-pnpm test           # turbo: Vitest
+pnpm install --frozen-lockfile
+pnpm build
 pnpm typecheck
-pnpm dev            # web :3000, server :3001
-pnpm sim:run        # CLI do simulador
+pnpm test
+pnpm test:smoke
+./scripts/start.sh --fast
+pnpm sim:run --seed example --cycles 20 --bots random,idle --out /tmp/echo-front.replay.jsonl
 ```
+
+Build shared packages before development; their exports resolve `dist/` and they have no watch tasks. Browser smoke requires Playwright Chromium. PostgreSQL tests require a disposable `TEST_DATABASE_URL`; skipped tests are not validation. See SDK READMEs for Python/Dart checks.
 
 ## Commits
 
-[Conventional Commits](https://www.conventionalcommits.org/). Escopos: `web`, `server`, `sim`, `protocol`, `agents-sdk`, `docs`, `ci`, `repo`.
+Use Conventional Commits with scopes such as `web`, `server`, `sim`, `protocol`, `agents-sdk`, `docs`, `ci` and `repo`. Explain the reason, change and validation. Husky formats staged files and validates commit messages. Follow the user's explicit authorization for remote operations; local commits do not authorize push, publication or deployment.
 
-```
-feat(sim): apply pulse_scan energy cost and cooldown
-fix(protocol): reject hello with incompatible major
-docs(sprints): mark sprint 1 determinism criteria
-```
+## Specialized delegation
 
-Husky formata o staged (Prettier) e valida a mensagem no commit.
-
-## Subagents
-
-Delegar trabalho especializado:
-
-- `sim-engineer` — `packages/sim`, determinismo, golden replay
-- `protocol-engineer` — schemas Zod, versionamento SemVer
-- `frontend` — Next.js, PixiJS, espectador, replay no browser
-- `server` — NestJS, WebSocket, loop de partida
-- `reviewer` — revisão read-only contra as regras do repo
+Delegate specialized work where useful: simulation/determinism, protocol/schema compatibility, frontend/replay rendering, server/WebSocket/storage and read-only review. Keep file ownership clear and preserve other agents' changes.

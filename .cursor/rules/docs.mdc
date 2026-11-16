@@ -6,7 +6,7 @@ alwaysApply: false
 
 # docs
 
-- Português no texto. Identificadores de código e protocolo em inglês, com backticks.
+- Maintained documentation in English. Identificadores de código e protocolo em inglês, com backticks.
 - Decisão de design relevante → seção **Decisões** com data (`YYYY-MM-DD`).
 - Sprints: critérios de aceite verificáveis. Sem demo reproduzível, o item não está feito.
 - Débito consciente na seção **Débitos** da sprint — nada de débito invisível.

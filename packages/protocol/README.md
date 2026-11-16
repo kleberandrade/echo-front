@@ -1,51 +1,37 @@
 # @echo-front/protocol
 
-Protocolo de mensagens (WebSocket) entre agentes e o servidor do
-[ECHO//FRONT](https://github.com/kleberandrade/echo-front) — uma arena tática
-onde agentes de IA competem com sensores imperfeitos (visão em cone, som,
-térmico, radar e memória com envelhecimento) em vez de visibilidade total do
-mapa.
+Canonical Zod schemas and TypeScript types for ECHO//FRONT agent messages, perceptions, decisions and spectator frames. The protocol constant is independent of the npm package version. Agents exchange JSON over WebSocket; schema validation checks external data at the boundary.
 
-Define, em [Zod](https://zod.dev), o formato de toda mensagem trocada:
-`hello`/`welcome`, percepção por ciclo (`sensors.visual`, `sensors.sound`,
-`sensors.thermal`, `sensors.radar`, `sensors.memory`), decisão do agente,
-`match_end` e mensagens de erro. Runtime-válido, não só tipos — qualquer
-payload pode ser verificado com `PerceptionPayloadSchema.parse(...)`.
+## Workspace setup and example
 
-## Instalação
+From the repository root:
 
 ```bash
-npm install @echo-front/protocol
+pnpm install --frozen-lockfile
+pnpm build
+pnpm --filter @echo-front/protocol test
 ```
 
-## Uso
+Use the local workspace rather than relying on registry publication. After building, run this module from `packages/protocol`:
 
-```ts
-import {
-  PerceptionPayloadSchema,
-  isCompatibleVersion,
-  PROTOCOL_VERSION,
-} from '@echo-front/protocol';
-
-// valida uma mensagem recebida do servidor
-const perception = PerceptionPayloadSchema.parse(rawMessage.payload);
-
-// compara versão do protocolo (só o major precisa bater)
-if (!isCompatibleVersion(serverVersion)) {
-  throw new Error(`protocolo incompatível: servidor ${serverVersion}, cliente ${PROTOCOL_VERSION}`);
-}
+```js
+import { parseAgentMessage, PROTOCOL_VERSION } from './dist/index.js';
+const hello = parseAgentMessage({
+  v: PROTOCOL_VERSION,
+  type: 'hello',
+  payload: { agentName: 'example-agent' },
+});
+console.log(hello.type, hello.v);
 ```
 
-## Documentação
+`parseAgentMessage`, `parseServerMessage` and `parseSpectateMessage` accept an object or JSON string and throw for malformed input. Individual schemas provide `.safeParse()` for callers that want structured errors instead. `DecisionPayloadSchema` checks decision shape; range/energy/ownership rules belong to the simulator/server.
 
-Referência completa do protocolo, incluindo o formato de cada sensor e o
-ciclo de vida de uma partida:
-[`docs/04-protocolo-agente.md`](https://github.com/kleberandrade/echo-front/blob/main/docs/04-protocolo-agente.md).
+## Compatibility and limitations
 
-Este pacote é consumido por [`@echo-front/sim`](https://www.npmjs.com/package/@echo-front/sim)
-(o simulador determinístico) e por [`@echo-front/agents-sdk`](https://www.npmjs.com/package/@echo-front/agents-sdk)
-(SDK para escrever bots).
+`isCompatibleVersion` currently compares major-version strings. Use the current `PROTOCOL_VERSION` and schemas for pre-1.0 clients; shared major zero does not establish semantic equivalence. The mode enum reserves values beyond implemented simulation modes. The spectator schema validates the fields needed by the viewer rather than the entire internal simulator state.
 
-## Licença
+See the [wire protocol](../../docs/04-protocolo-agente.md) for handshake, timing, limits, message lifecycle and trust boundaries.
 
-MIT — ver [LICENSE](./LICENSE).
+## License
+
+MIT; see [LICENSE](LICENSE).

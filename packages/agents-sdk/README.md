@@ -1,48 +1,64 @@
 # @echo-front/agents-sdk
 
-SDK para escrever bots do [ECHO//FRONT](https://github.com/kleberandrade/echo-front) —
-conecta via WebSocket, valida o protocolo, e chama sua função de decisão a
-cada percepção recebida. Inclui bots de referência prontos (`hunterBot`,
-`wandererBot`, `courierBot`, `tricksterBot`, `ghostBot`) pra usar como
-esqueleto ou adversário de teste.
+TypeScript/Node client for ECHO//FRONT. `Agent` handles WebSocket handshake and per-unit perception callbacks. Reference bots include `wandererBot`, `hunterBot`, `courierBot`, `tricksterBot` and `ghostBot`; `siegeRoutine` supplies a Core Siege routine.
 
-## Instalação
+## Requirements and workspace setup
+
+Use the Node/pnpm versions from the root manifests. From the repository root:
 
 ```bash
-npm install @echo-front/agents-sdk
+pnpm install --frozen-lockfile
+pnpm build
+pnpm --filter @echo-front/agents-sdk test
 ```
 
-## Uso
+This workflow uses local workspace packages and does not assume a published npm release. The package exports compiled files from `dist/`.
 
-```ts
+## Executable examples
+
+With the server running, launch the example agent in two terminals so the queue can pair them:
+
+```bash
+node packages/agents-sdk/examples/agent.mjs
+```
+
+Set `AGENT_WS_URL`, `AGENT_NAME` and optional `AGENT_TOKEN` to customize it. Alternatively, launch both reference bots at once:
+
+```bash
+pnpm --filter @echo-front/agents-sdk match -- --url ws://localhost:3001/agent --bots courier,trickster
+```
+
+The harness plays a complete series and prints results. It reconstructs team-dependent bots from each welcome because sides change between games.
+
+Check a local decision module without a server:
+
+```bash
+node packages/agents-sdk/dist/check.js packages/agents-sdk/examples/decide.mjs
+```
+
+The module exports synchronous `decide(unitId, perception, cycle)`. The checker runs 60 headless cycles against a reference bot, validates decisions against the protocol and verifies its replay. This is protocol conformance, not a strategy-strength benchmark.
+
+## Client API
+
+```js
 import { Agent } from '@echo-front/agents-sdk';
-
 const agent = new Agent({
   url: 'ws://localhost:3001/agent',
-  agentName: 'meu-bot',
-  onPerception(unitId, perception) {
-    // perception.sensors.visual/thermal/sound/radar/memory — ver docs/04
-    return { movement: { direction: 0, speed: 0.5 } };
+  agentName: 'minimal-agent',
+  onPerception(_unitId, perception) {
+    return { movement: { direction: perception.self.heading, speed: 0.5 } };
   },
 });
-
 await agent.connect();
+// When shutting down: agent.close();
 ```
 
-Prefere Python? [`echo-front-agent-sdk`](https://github.com/kleberandrade/echo-front/tree/main/packages/agents-sdk-py#readme) é o cliente equivalente.
+`connect()` resolves when the socket opens and sends hello, before pairing/welcome. `onWelcome`, `onMessage` and `onClose` expose lifecycle events. The perception callback is synchronous; keep it within the server cycle budget. Return `undefined` to send no decision. `sendDecision(unitId, cycle, payload)` is also available. The client currently ignores malformed incoming messages; it does not automatically reconnect or provide an async inference scheduler.
 
-Pra rodar partidas headless entre bots (sem servidor, útil pra testar e
-avaliar em lote): `runPerceptionMatch`/`batch`, exportados por
-[`@echo-front/sim`](https://www.npmjs.com/package/@echo-front/sim).
+For headless perception-limited matches use `runPerceptionMatch` from `@echo-front/sim`. Reference bots receive `(unitId, perception, cycle)`; create separate bot instances per team/match to isolate state.
 
-## Documentação
+See the [protocol](../../docs/04-protocolo-agente.md), [root README](../../README.md), [Python client](../agents-sdk-py/README.md) and [Dart client](../agents-sdk-dart/README.md).
 
-Guia completo pra escrever um agente (protocolo, sensores, exemplos comentados):
-[`docs/04-protocolo-agente.md`](https://github.com/kleberandrade/echo-front/blob/main/docs/04-protocolo-agente.md).
-Os bots de referência (`hunterBot`, `wandererBot`, `courierBot`, `tricksterBot`,
-`ghostBot`) ficam em [`src/bots.ts`, `src/objective-bots.ts` e `src/ghost-bot.ts`](https://github.com/kleberandrade/echo-front/tree/main/packages/agents-sdk/src) —
-comentados, servem de esqueleto pra escrever o seu.
+## License
 
-## Licença
-
-MIT — ver [LICENSE](./LICENSE).
+MIT; see [LICENSE](LICENSE). Third-party dependencies retain their licenses.

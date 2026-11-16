@@ -1,30 +1,23 @@
-# ECHO//FRONT — Documentação
+# ECHO//FRONT documentation
 
-Arena tática 2,5D onde IAs competem por **percepção**, não por reflexo. Cada agente enxerga o mundo apenas através de sensores imperfeitos e decide, a cada ciclo, em quem confiar, o que revelar e o que esconder. **Informação é um recurso** tão importante quanto vida e energia.
+These English guides describe the implementation in this checkout. The canonical wire schemas are in `packages/protocol/src/index.ts`; simulation settings are in `packages/sim/src/types.ts`. Historical sprint acceptance claims do not replace current validation.
 
-## Índice
+- [Product vision](01-visao.md): purpose, audience and design principles.
+- [Game design](02-game-design.md): implemented resources, actions and modes.
+- [Architecture](03-arquitetura.md): workspace boundaries and data flow.
+- [Agent protocol](04-protocolo-agente.md): handshake, decisions and message validation.
+- [Simulation and replays](05-simulacao.md): determinism, sensors and replay format.
+- [Spectator and visual design](06-espectador-e-visual.md): arena and replay controls.
+- [Competition](07-campeonato.md): matchmaking, scores and container execution.
+- [Environment, deployment and CI](08-deploy.md): local variables, persistence and checks.
+- [Playtest guide](10-guia-playtest.md): repeatable manual evaluation.
+- [Maintenance log](maintenance-log.md): modernization actions and reasons.
+- [Sprint archive](sprints/README.md): original Portuguese development history, including proposed features and unverified historical claims.
 
-| Documento                                                | Conteúdo                                                     |
-| -------------------------------------------------------- | ------------------------------------------------------------ |
-| [01-visao.md](./01-visao.md)                             | Visão do produto, pilares, público e diferenciais            |
-| [02-game-design.md](./02-game-design.md)                 | Regras, unidades, sensores, ações, modos de jogo             |
-| [03-arquitetura.md](./03-arquitetura.md)                 | Monorepo, Next.js + PixiJS, NestJS, deploy no Vercel         |
-| [04-protocolo-agente.md](./04-protocolo-agente.md)       | Contrato JSON percepção → decisão, WebSocket, versionamento  |
-| [05-simulacao.md](./05-simulacao.md)                     | Loop de ticks, determinismo, modelo dos sensores, replay     |
-| [06-espectador-e-visual.md](./06-espectador-e-visual.md) | Direção de arte, modo espectador, replay com confiança da IA |
-| [07-campeonato.md](./07-campeonato.md)                   | Formato de torneio, pontuação, submissão de agentes          |
-| [08-deploy.md](./08-deploy.md)                           | Deploy (Vercel + server), CI/CD e checklist de release       |
-| [10-guia-playtest.md](./10-guia-playtest.md)             | Roteiro pra rodar um playtest com gente de fora do projeto   |
-| [sprints/](./sprints/README.md)                          | Roadmap de desenvolvimento                                   |
+## Glossary
 
-## Estado atual
+**Agent:** a WebSocket client controlling one team's units. **Unit:** an individual observer, runner or other configured class. **Cycle:** one perception/decision interval containing several simulation ticks. **Tick:** one deterministic movement step. **Fragment:** a Data Run objective transported to the friendly core. **Core:** a team's base, destructible in Core Siege. **Decoy:** a false sensor source. **Perception:** filtered information for one unit. **Replay:** seed, configuration, recorded decisions and expected final-state hash. **Series:** games between a pair of agents, with sides mirrored. **Season:** an optional result label used to filter standings.
 
-- **Fase:** MVP completo + competição (sprints 0–7 concluídas; marcos M1–M4 atingidos).
-- **Entregue:** simulador determinístico (SIM 0.5.0) com 4 sensores e Data Run, bots de referência equilibrados, espectador PixiJS no visual do concept com fog e camada de crença, séries ranqueadas via WebSocket com replays verificáveis, leaderboard e primeiro torneio amistoso (36 partidas, zero divergência).
-- **Stack:** monorepo pnpm + Turborepo · `apps/web` (Next.js + PixiJS, deploy Vercel) · `apps/server` (NestJS, simulador autoritativo) · `packages/protocol` (schemas v0.3.0) · `packages/sim` · `packages/agents-sdk`.
+## Conventions
 
-## Convenções
-
-- Documentação em português; identificadores de código, eventos e campos de protocolo em inglês (`pulse_scan`, `carrying_fragment`).
-- Toda decisão de design relevante vira uma seção "Decisões" no doc correspondente, com data.
-- Sprints têm critérios de aceite verificáveis; nada é "feito" sem demo reproduzível.
+Write maintained documentation in English. Keep code identifiers and protocol fields unchanged. Record meaningful design decisions with their date. Use reproducible examples and distinguish completed automated checks from manual checks, skipped tests and future plans.

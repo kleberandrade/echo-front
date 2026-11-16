@@ -1,129 +1,71 @@
-# 04 — Protocolo do Agente
+# 04 — Agent protocol
 
-Contrato entre o simulador e os agentes. Versão do protocolo: **`0.1.0`** (pré-lançamento; breaking changes permitidos até `1.0.0`). Schemas Zod canônicos vivem em `packages/protocol` — este doc é a referência humana.
+## Canonical contract
 
-## Transporte
+`packages/protocol/src/index.ts` defines the runtime schemas and exported types. `PROTOCOL_VERSION` is **0.6.0**; package release versions and simulation versions are separate values. Use the constant when constructing clients.
 
-- **WebSocket**, mensagens JSON UTF-8, uma mensagem por frame.
-- Handshake: agente conecta em `wss://<server>/agent?token=...` e envia `hello`; servidor responde `welcome` com `matchId`, `unitIds` controladas, `protocolVersion`, `seedPublic` (hash da semente — a semente real só é publicada após a partida).
-- A cada ciclo de decisão o servidor envia **uma percepção por unidade**; o agente tem **350 ms** para responder cada uma. Sem resposta → no-op (mantém movimento anterior, sem ação).
-
-## Envelope
-
-Toda mensagem tem envelope:
+Transport is one UTF-8 JSON object per WebSocket message. Connect to `ws://localhost:3001/agent` locally; use `wss://` behind TLS in production. Authentication tokens are fields in `hello.payload`, not URL query parameters.
 
 ```json
-{ "v": "0.1.0", "type": "perception", "cycle": 118, "unitId": "cian_runner_1", "payload": {} }
+{ "v": "0.6.0", "type": "hello", "payload": { "agentName": "example-agent" } }
 ```
 
-Tipos servidor→agente: `welcome`, `perception`, `match_start`, `match_end`, `error`.
-Tipos agente→servidor: `hello`, `decision`.
+A lone agent waits in the queue. Once paired, each receives `welcome` with `matchId`, `team` (`cian` or `magenta`), `unitIds`, `protocolVersion`, `seedPublic`, `map` and optional `series` (`seriesId`, `game`, `of`). The server then sends `match_start`, followed by perceptions. A fresh welcome can change the team between games; rebuild team-dependent bot state then.
 
-## Percepção (`perception.payload`)
+## Envelopes
+
+Agent types: `hello`, `decision`. Server types: `welcome`, `match_start`, `perception`, `match_end`, `error`. All carry `v`, `type` and `payload`; `cycle` and `unitId` are optional at the general schema level. Perception messages identify one unit and cycle.
 
 ```json
 {
-  "self": {
-    "position": [42, 18],
-    "heading": 90,
-    "energy": 71,
-    "integrity": 86,
-    "carrying_fragment": false,
-    "signature": "low",
-    "class": "runner",
-    "cooldowns": { "pulse_scan": 0, "deploy_decoy": 3, "hide": 0 }
-  },
-  "sensors": {
-    "visual": [
-      {
-        "type": "unit",
-        "class_guess": "observer",
-        "direction": 83,
-        "distance": 21,
-        "confidence": 0.9
-      },
-      { "type": "movement", "direction": 83, "distance": 21, "confidence": 0.5 }
-    ],
-    "thermal": [{ "intensity": 0.74, "direction": 110 }],
-    "sound": [{ "intensity": 0.41, "direction": 270 }],
-    "radar": [],
-    "memory": [
-      {
-        "type": "unit",
-        "class_guess": "warden",
-        "direction": 205,
-        "distance": 12,
-        "cycles_since_seen": 4,
-        "confidence": 0.61
-      }
-    ]
-  },
-  "allies": [
-    {
-      "unitId": "cian_observer_1",
-      "position": [38, 22],
-      "energy": 55,
-      "integrity": 100,
-      "carrying_fragment": false
-    }
-  ],
-  "team_messages": [
-    { "from": "cian_observer_1", "cycle": 117, "data": "possible_enemy_near_relay_2" }
-  ],
-  "events": ["relay_2_activated", "communication_interference"],
-  "objective": {
-    "mode": "data_run",
-    "score": { "cian": 1, "magenta": 0 },
-    "time_remaining_cycles": 62,
-    "known_fragments": [{ "position": [55, 20], "state": "spawned", "confidence": 1.0 }]
+  "v": "0.6.0",
+  "type": "decision",
+  "cycle": 0,
+  "unitId": "cian_runner_1",
+  "payload": {
+    "movement": { "direction": 95, "speed": 0.7 },
+    "action": "deploy_decoy",
+    "target": [55, 20],
+    "message_to_team": "possible_enemy_near_relay",
+    "debug": { "confidence": 0.72 }
   }
 }
 ```
 
-Notas de design:
+Agents should echo the perception's unit and cycle and send only decisions for owned units. The current server collects input until its 500 ms cycle closes. It does not enforce a separate 350 ms deadline. A supplied cycle must match the current match cycle; stale or future decisions are ignored. Omitted cycle remains accepted for older clients. The TypeScript callback is synchronous. Keep decisions fast enough to fit the cycle.
 
-- **Direções** em graus (0 = leste, sentido anti-horário), **distâncias** em unidades lógicas do mapa.
-- `confidence` aparece onde o simulador injeta incerteza; o agente decide se confia.
-- `allies` só tem dados completos se a comunicação estiver funcional; sob `communication_interference`, `allies` chega vazio ou defasado.
-- Decoys **não são marcados**: um decoy bem construído é indistinguível nas leituras de som/radar. Distinguir é problema do agente.
-- `visual` fora do cone/oclusão simplesmente não aparece — ausência de leitura não é ausência de inimigo.
-- `memory` (sprint-14, fog com envelhecimento — docs/05-simulacao.md): última posição conhecida de um inimigo que já esteve em `visual` antes mas saiu de vista — não duplica quem já está em `visual` agora. `direction`/`distance` são recalculadas da posição ATUAL da unidade até a posição LEMBRADA (defasada); `confidence` decai com `cycles_since_seen` até a entrada expirar (some da lista, não fica em 0 pra sempre).
+## Perception payload
 
-## Decisão (`decision.payload`)
+- `self`: `position` tuple, `heading`, `energy`, `integrity`, `carrying_fragment`, `signature`, `class`, `cooldowns`.
+- `sensors.visual`: `type`, optional `class_guess`, `direction`, `distance`, `confidence`.
+- `sensors.thermal` and `sensors.sound`: `intensity`, `direction`.
+- `sensors.radar`: `type`, `direction`, optional quantized `position`, optional `distance_band` (`near`, `mid`, `far`).
+- `sensors.memory`: `type`, optional `class_guess`, `direction`, `distance`, positive `cycles_since_seen`, `confidence`.
+- `allies`: friendly unit IDs, positions, energy, integrity, carrying state and optional `stale` marker.
+- `team_messages`: `from`, `cycle`, `data`.
+- `events`: event strings generated by the simulation.
+- `objective`: `mode`, team `score`, `time_remaining_cycles`, `known_fragments` and optional `pulses_left`.
 
-```json
-{
-  "movement": { "direction": 95, "speed": 0.7 },
-  "action": "deploy_decoy",
-  "target": [55, 20],
-  "message_to_team": "possible_enemy_near_relay_2",
-  "debug": { "confidence_enemy_behind_tower": 0.72 }
-}
-```
+Directions are degrees in `[0, 360)`, with 0 east and increasing counterclockwise. Distances and positions use logical map units, not internal fixed-point integers. Intensity/confidence are in `[0, 1]`. Memory describes a last known location, not a hidden target's current position. Visual decoys may be identified as decoys; sound/radar sources are intentionally ambiguous.
 
-| Campo                | Obrigatório      | Regras                                                                                                     |
-| -------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------- |
-| `movement.direction` | não              | graus; omitido = mantém rumo                                                                               |
-| `movement.speed`     | não              | 0.0–1.0 (multiplicado pela velocidade da classe); >1.0 é clampado                                          |
-| `action`             | não              | uma por ciclo: `pulse_scan` \| `deploy_decoy` \| `hide` \| `speed_boost` \| `strike` \| `pickup` \| `drop` |
-| `target`             | se a ação exigir | posição alvo; validada por alcance                                                                         |
-| `message_to_team`    | não              | string ≤ 64 bytes; entregue no próximo ciclo se comunicação ok                                             |
-| `debug`              | não              | **ignorado pela simulação**; gravado no replay e exibido no espectador ("72% de confiança…")               |
+## Decision payload and validation
 
-Validação: payloads que falham no schema → `error` + no-op. Ação sem energia suficiente → no-op da ação (movimento ainda vale). Três payloads inválidos consecutivos → aviso; dez → desconexão (a partida segue com a unidade em no-op).
+All decision fields are optional; `{}` issues no new action. `movement.direction` must be in `[0,360)` and `movement.speed` in `[0,1]`. Out-of-range speed is rejected by the protocol schema; it is not clamped at the network boundary. `action` is one of `pulse_scan`, `deploy_decoy`, `hide`, `speed_boost`, `strike`, `pickup`, `drop`. `target` is a position tuple; range and energy are simulation rules. `message_to_team` is limited to 64 JavaScript string code units by Zod, not 64 UTF-8 bytes. `debug` is an optional object, retained with recorded decisions for replay inspection and excluded from simulation rules.
 
-## Eventos globais (`events`)
+Malformed input produces `invalid_payload`. Consecutive malformed payloads trigger a warning from the third and disconnection at ten by default. A valid parsed message resets the counter. Other error codes are `unknown_type`, `version_mismatch`, `not_in_match` and `rate_limited`; schemas define allowable codes, while exact emission depends on the server implementation. Disconnected units continue without new actions.
 
-Strings estáveis, documentadas aqui, ex.: `match_start`, `fragment_spawned`, `fragment_delivered:<team>`, `pulse_scan_detected` (com leitura direcional no sensor `radar`), `relay_<n>_activated`, `communication_interference`, `unit_destroyed:<unitId>`.
+`match_end.payload` contains `score`, `winner`, `reason`, the revealed `seed` and `finalHash`. Reasons include `fragments_delivered`, `core_destroyed`, `time_up` and the schema's reserved `forfeit` value.
 
-## Versionamento e compatibilidade
+## Versioning and trust
 
-- SemVer no campo `v`. Servidor rejeita `hello` com major incompatível.
-- Aditivo (novos campos opcionais) = minor. Breaking (renomear/remover/alterar semântica) = major.
-- `packages/protocol` publica os schemas; o agente de exemplo do `agents-sdk` é o teste de conformidade vivo.
+The compatibility helper currently compares major-version strings. Pre-1.0 clients should use the current schema rather than assume every 0.x message is interchangeable. A schema change requires updated tests and documentation. `seedPublic` is a hash of the seed; the default development seed schedule is predictable and is not a secure commitment against adversarial agents. Replay hashes check deterministic consistency; they do not authenticate a publisher.
 
-## Decisões
+## Spectator channel
 
-- 2026-08-25 — `debug` como canal de confiança da IA: dá o "replay com nível de confiança" sem afetar a simulação, e sem obrigar ninguém a preenchê-lo.
-- 2026-08-25 — Percepção por unidade (não por time): força a comunicação a ser uma escolha com custo, como no design; um "cérebro de time" precisa reconstruir o quadro global a partir de mensagens.
-- 2026-08-25 — Semente publicada só após a partida (hash antes): permite verificação sem permitir pré-cálculo do ruído dos sensores.
+`/spectate` uses a separate union: `spectate_state`, `spectate_idle`, `spectate_end`. These messages do not use the versioned agent envelope. The state is omniscient and includes full simulation state. The viewer follows the latest match; reconnect if it connected while idle. Avoid exposing an undelayed spectator stream to competing agents in a serious tournament.
+
+## Decisions
+
+- 2026-08-25 — Per-unit perceptions preserve incomplete information and make communication an explicit choice.
+- 2026-08-25 — Agent debug data is optional and cannot change simulation rules.
+- 2026-11-15 — Document actual boundary validation and cycle timing rather than the original unimplemented timeout design.

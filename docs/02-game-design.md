@@ -1,100 +1,40 @@
-# 02 — Game Design
+# 02 — Game design
 
-## Loop central
+## Implemented game loop
 
-1. O simulador avança em **ticks** (10 ticks/s no MVP).
-2. A cada **ciclo de decisão** (a cada 5 ticks, ou seja, 2 decisões/s), cada agente recebe um pacote de **percepção** e responde com uma **decisão** (movimento + no máximo 1 ação especial + mensagem opcional ao time).
-3. O simulador é **autoritativo**: valida, aplica custos de energia e resolve conflitos. Decisões inválidas ou atrasadas viram no-op (a unidade mantém o comportamento anterior).
-4. Vence quem cumprir o objetivo do modo antes do tempo acabar (ou por pontuação/tiebreak).
+Each team controls the classes in `DEFAULT_CONFIG.composition` (an observer and runner by default). Every decision cycle contains five deterministic movement ticks. The live server schedules one cycle every 500 ms; the default 180-cycle game lasts at most about 90 seconds, excluding setup and series pauses. Headless runs advance without a real-time clock.
 
-## Arena
+Movement uses a direction in degrees (0 east, counterclockwise) and speed from 0 to 1. The server validates message shape; the simulator resolves energy, cooldowns, geometry and objective conditions. Missing decisions preserve previous movement and trigger no new action. Obstacles block movement and line of sight.
 
-- Grade contínua sobre células hexagonais/quadradas (MVP: grade quadrada 64×36 unidades lógicas), com plataformas em 2–3 alturas.
-- Elementos: **plataformas**, **obstáculos** (bloqueiam visão e movimento), **torres de energia** (recarga lenta em raio curto), **zonas de interferência** (comunicação e radar degradados), **spawns de fragmento**, **núcleo** de cada time.
-- Mapa simétrico por rotação de 180° para equilíbrio competitivo.
+## Resources and actions
 
-## Recursos
+Units have class-specific integrity, maximum energy, speed and sensor properties. Energy regenerates by 2 per cycle; towers add 4. Fast movement costs energy. Exhaustion limits speed. Integrity does not automatically regenerate.
 
-| Recurso | Escopo | Regeneração | Consumido por |
-|---|---|---|---|
-| **Integrity** (vida) | por unidade | não regenera (MVP) | dano, colisões |
-| **Energy** | por unidade | +2/ciclo (até o máx.); +6/ciclo em torre de energia | movimento rápido, ações especiais, radar |
-| **Informação** | implícito | — | percepção; "gasto" ao revelar-se |
+- `pulse_scan`: radar snapshot within radius 18; costs 25 energy (observer: 15), with a five-cycle cooldown. Reveals the pulse origin to others.
+- `deploy_decoy`: costs 20 energy and creates a false sound/radar source lasting ten cycles.
+- `hide`: costs 10 energy and lasts three cycles, suppressing visual visibility and movement.
+- `speed_boost`: costs 3 energy per cycle, increases speed by a factor of 1.6 and increases noise.
+- `strike`: costs 15 energy, deals 20 damage at range 3 and creates noise.
+- `pickup` and `drop`: interact with fragments; objective range and capture rules still apply.
 
-## Sensores
+These values are defaults in `packages/sim/src/types.ts`, not duplicated configuration knobs in the server. Tests pin interactions and edge cases. Classes `observer`, `runner`, `warden`, `phantom`, `disruptor` and `architect` have stat profiles; names do not imply implemented shield, jamming or construction powers.
 
-Todo sensor tem uma vantagem e uma desvantagem — este é o coração do jogo.
+## Sensors
 
-| Sensor | Vantagem | Desvantagem | Saída típica |
-|---|---|---|---|
-| **Visão** | Identificação precisa (tipo + distância) | Bloqueada por obstáculos; cone limitado (90°, alcance 14) | `{type, direction, distance}` |
-| **Térmico** (pós-MVP) | Detecta unidades escondidas/camufladas | Confunde máquinas, torres e rastros residuais | `{intensity, direction}` sem tipo |
-| **Som** | Grande alcance (30), atravessa obstáculos | Direção imprecisa (±25°), sem distância confiável | `{intensity, direction±ruído}` |
-| **Radar ativo** (`pulse_scan`) | Revela todas as entidades num raio de 18 por 1 ciclo | Custa 25 de energia e **anuncia a posição do emissor para todos** | snapshot com posições aproximadas |
-| **Comunicação** | Compartilha informação com o time (campo `message_to_team`) | Bloqueada em zonas de interferência; interceptável pelo Disruptor (pós-MVP) | mensagens de até 64 bytes |
+Visual readings provide type, direction, distance and confidence within the unit's cone and unobstructed range (observer: 120°/18; runner: 90°/14). Sound travels farther with direction jitter and obstacle attenuation. Thermal sensing reports intensity and direction from units, residual heat and towers. Active radar reports quantized positions and pulse origins. Memory reports a previously seen target's last known location, relative to the observer's current position; its confidence decays and the entry expires after the configured memory interval (default 12 cycles).
 
-Ruído: direções e intensidades recebem jitter determinístico derivado da semente da partida — reproduzível, mas não trivialmente invertível pelo agente.
+Team messages arrive on the next cycle when communication permits. Interference can suppress messages and return stale ally snapshots marked `stale: true`. Sensor absence does not prove that no enemy is nearby.
 
-### As decisões que os sensores forçam
+## Modes and objectives
 
-O agente precisa constantemente escolher: confiar ou não em uma leitura; pagar energia (e exposição) por informação melhor; tratar um sinal como inimigo ou como isca; compartilhar ou guardar o que sabe; defender o objetivo ou preparar emboscada; economizar energia ou agir agressivamente.
+**Data Run:** capture fragments and return them to the friendly core. Capture requires two consecutive eligible cycles within radius 2; enemy proximity can block capture. Carriers move at 80% speed and emit more sound. The first team to deliver three fragments wins; otherwise `decideWinner` resolves the time-limit result using score, carried fragments, surviving integrity and energy efficiency.
 
-## Unidades (classes)
+**Core Siege:** find and destroy the enemy core. Core integrity defaults to 100; strikes deal 20 core damage. Enemy core perception is range-limited.
 
-MVP usa **Observer + Runner**. As demais entram nas sprints pós-MVP.
+**Silent Hunt:** Data Run with a configured per-unit radar pulse budget. Tournament configuration sets this to two. Setting `maxPulsesPerMatch: 0` means unlimited; selecting the mode alone does not set a nonzero budget.
 
-| Classe | Papel | Atributos | Habilidades |
-|---|---|---|---|
-| **Observer** | Sensor ambulante | Integrity baixa, energia alta, velocidade média | Cone de visão ampliado, `pulse_scan` com custo reduzido |
-| **Runner** | Transporte de fragmentos | Integrity média, muito rápido, assinatura baixa | `speed_boost`, `hide` (reduz assinatura a ~0 por 3 ciclos, imóvel) |
-| **Warden** | Defesa de área | Integrity alta, lento | `shield_wall` (parede temporária), zona defensiva |
-| **Phantom** | Guerra de informação | Frágil, rápido | Camuflagem ativa, `deploy_decoy` (eco falso com assinatura configurável) |
-| **Disruptor** | Negação de sensores | Médio | Jamming de comunicação, falso-positivo em radar inimigo |
-| **Architect** | Infraestrutura | Lento, caro | Constrói torres-sensores fixas, pontes, mini-torres de energia |
+`signal_control`, `energy_crisis`, `mutation` and `escort` appear in the protocol enum but have no simulation implementation. They must not be advertised as playable modes.
 
-Composição: cada time monta 3–4 unidades. Desafios de torneio podem restringir ("vença escolhendo apenas 3 das 6 classes") ou espelhar composições ("mesmas unidades; vence a melhor estratégia").
+## Arena and balance
 
-## Ações especiais (MVP)
-
-| Ação | Custo | Efeito | Contrapartida |
-|---|---|---|---|
-| `pulse_scan` | 25 (Observer: 15) | Revela entidades num raio 18 por 1 ciclo | Emissor aparece no event feed global e nos sensores inimigos |
-| `deploy_decoy` | 20 | Cria eco em `target` que emite som/assinatura de radar por 10 ciclos | Decoy some se "visto" por visão direta |
-| `hide` | 10 + imobilidade | Assinatura ~0 por 3 ciclos | Não se move nem sente por visão enquanto oculto |
-| `speed_boost` (Runner) | 3/ciclo | Velocidade ×1,6 | Assinatura sonora alta enquanto ativo |
-
-Regra geral: **toda ação que melhora sua situação informacional ou posicional vaza informação em troca.**
-
-## Fragmentos e captura (modo Data Run)
-
-- Fragmentos surgem em pontos fixos do mapa (semente define ordem/timing dentro de um conjunto conhecido).
-- Capturar: permanecer 2 ciclos adjacente ao fragmento sem inimigo no mesmo raio.
-- Transportar: `carrying_fragment: true` reduz velocidade em 20% e aumenta assinatura térmica/sonora — o portador fica mais detectável.
-- Entregar: tocar o próprio núcleo. Se o portador for destruído, o fragmento cai no local.
-
-## Combate
-
-Combate existe, mas é caro e secundário. Ataque básico: `strike` em alvo adjacente-curto (alcance 3), custo 15 de energia, dano 20 de integrity, gera assinatura alta. Destruir unidades pontua pouco; o incentivo dominante é o objetivo.
-
-## Modos de disputa
-
-| Modo | Objetivo | Twist |
-|---|---|---|
-| **Data Run** (MVP) | Capturar e entregar fragmentos | Portador fica mais detectável |
-| **Core Siege** | Localizar e destruir o núcleo adversário | Núcleo só aparece em sensores a curta distância |
-| **Signal Control** | Dominar torres de comunicação | Torres dominadas ampliam seus sensores |
-| **Silent Hunt** | Data Run com sensores ativos limitados | Nº de `pulse_scan` por partida é finito |
-| **Energy Crisis** | Qualquer objetivo com pool de energia único do time | Cada ação de um drena todos |
-| **Mutation** | Mapa muda durante a partida | Pontes caem, zonas de interferência migram |
-| **Escort** | Proteger entidade autônoma que segue rota própria | Não se controla a escolta, só o ambiente dela |
-
-## Condições de vitória e pontuação (Data Run MVP)
-
-1. Primeiro time a entregar 3 fragmentos vence.
-2. Ao fim dos 90 s: mais fragmentos entregues → mais fragmentos carregados → mais integrity total → empate resolvido por menor energia total consumida.
-
-## Decisões
-
-- 2026-08-25 — Grade quadrada no MVP (hex fica para depois): simplifica pathfinding e o modelo de oclusão da visão.
-- 2026-08-25 — 2 decisões/s por agente: suficiente para tática, generoso para agentes remotos com latência de rede; timeout de decisão = 350 ms.
-- 2026-08-25 — Combate mantido no MVP, mas caro: preserva a tensão sem transformar o jogo em deathmatch.
+The built-in Alpha map defines obstacles, spawn points, towers and interference zones. Map validation checks structural constraints. Bot batch runs provide reproducible observations, not proof of competitive balance. Preserve seeds, configuration, bot code and outputs when comparing strategies.

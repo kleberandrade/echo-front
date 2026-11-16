@@ -1,49 +1,39 @@
 # @echo-front/sim
 
-Simulador determinístico da arena tática do [ECHO//FRONT](https://github.com/kleberandrade/echo-front):
-movimento, energia, fragmentos, ações especiais (decoy, hide, boost, strike),
-sensores com ruído reproduzível (RNG derivado de seed+ciclo+ouvinte+fonte) e
-fog com envelhecimento (memória de última posição vista de um inimigo, que
-decai até expirar). Puro TypeScript, sem I/O — o mesmo código roda em Node
-(servidor de partidas) e no browser (verificação de replay no cliente).
+Deterministic ECHO//FRONT simulation: fixed-point movement, seeded sensors, energy, actions, fragment objectives, Core Siege, Silent Hunt and enemy memory. The same core runs on the authoritative Node server and in the browser replay viewer. CLI entry points add Node I/O around the pure core.
 
-Qualquer partida é **100% reproduzível**: dado o mesmo `seed` e a mesma
-sequência de decisões, `stepCycle` produz sempre o mesmo estado final —
-verificado por hash canônico (`stateHash`) e por replays golden no CI.
+## Workspace setup and use
 
-## Instalação
+From the repository root:
 
 ```bash
-npm install @echo-front/sim
+pnpm install --frozen-lockfile
+pnpm build
+pnpm --filter @echo-front/sim test
+pnpm sim:run --seed example --cycles 20 --bots random,idle --out /tmp/echo-front.replay.jsonl
 ```
 
-## Uso
+The local workspace does not require a published npm version. Main exports include `createMatch`, `step`, `stepCycle`, `buildPerceptions`, `DEFAULT_CONFIG`, `ARENA_ALPHA`, `runMatch`, `runPerceptionMatch`, `resimulate`, `replayToJsonl`, `replayFromJsonl` and `stateHash`.
 
-```ts
-import {
-  createMatch,
-  stepCycle,
-  buildPerceptions,
-  DEFAULT_CONFIG,
-  ARENA_ALPHA,
-} from '@echo-front/sim';
+For example, run this module from the package directory after building:
 
-let state = createMatch('minha-seed', ARENA_ALPHA, DEFAULT_CONFIG);
-
-while (!state.ended) {
-  const perceptions = buildPerceptions(state, ARENA_ALPHA, DEFAULT_CONFIG);
-  const decisions = decideForEachUnit(perceptions); // seu código de agente
-  state = stepCycle(state, decisions, ARENA_ALPHA, DEFAULT_CONFIG).state;
-}
+```js
+import { idleBot, runMatch, resimulate } from './dist/index.js';
+const result = runMatch({
+  seed: 'example',
+  bots: { cian: idleBot(), magenta: idleBot() },
+});
+console.log(resimulate(result.replay).cycle, result.replay.finalHash);
 ```
 
-## Documentação
+`runMatch` bots receive full state and are appropriate for low-level fixtures. `runPerceptionMatch` limits bots to filtered per-unit perceptions, matching the information boundary of remote agents. Recreate bot instances between matches when they hold state.
 
-Regras completas da simulação (ciclo de tick, sensores, ações, modos de
-jogo): [`docs/05-simulacao.md`](https://github.com/kleberandrade/echo-front/blob/main/docs/05-simulacao.md).
-Usa tipos de [`@echo-front/protocol`](https://www.npmjs.com/package/@echo-front/protocol)
-para o formato de percepção/decisão.
+## Validation and limitations
 
-## Licença
+Tests cover determinism, golden replays, maps, actions, modes, sensors, heat and objectives. Identical seed/configuration/map/decisions reproduce the same result under compatible simulation code. A replay hash is a consistency check, not cryptographic authentication. Older replay compatibility is not guaranteed across rule changes. Only `data_run`, `core_siege` and `silent_hunt` are implemented modes.
 
-MIT — ver [LICENSE](./LICENSE).
+See [simulation and replay](../../docs/05-simulacao.md) and [game design](../../docs/02-game-design.md).
+
+## License
+
+MIT; see [LICENSE](LICENSE).

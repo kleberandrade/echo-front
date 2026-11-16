@@ -1,90 +1,39 @@
-# 03 — Arquitetura
+# 03 — Architecture
 
-## Visão geral
+## Boundaries
 
-Monorepo **pnpm workspaces + Turborepo**. O simulador é **autoritativo e roda no servidor** (NestJS); o front (Next.js + PixiJS) apenas renderiza estado e replays. Agentes conectam-se ao servidor por WebSocket.
+The pnpm/Turborepo workspace separates the deterministic domain from transport, persistence and rendering. `packages/protocol` defines Zod schemas. `packages/sim` imports those types and owns game state and rules. `packages/agents-sdk` uses both for clients, examples and conformance checks. `apps/server` hosts the authoritative simulation; `apps/web` uses the same simulator only to reconstruct replays.
 
-```
-echo-front/
-├── apps/
-│   ├── web/            # Next.js 15 (App Router) + PixiJS 8 — deploy no Vercel
-│   └── server/         # NestJS — simulador autoritativo + gateway WS (deploy fora do Vercel)
-├── packages/
-│   ├── protocol/       # Tipos TS + schemas Zod do protocolo (percepção/decisão/replay)
-│   ├── sim/            # Núcleo da simulação: puro, determinístico, sem I/O
-│   └── agents-sdk/     # SDK TS de referência + agentes de exemplo (bots)
-├── docs/               # Esta documentação
-├── turbo.json
-└── pnpm-workspace.yaml
-```
+The simulation core must remain independent of sockets, storage, wall-clock time and unseeded randomness. Node-only CLI and replay I/O entry points surround that core. The web application imports workspace packages through compiled `dist/` exports, so shared packages must be built before web development.
 
-### Por que `packages/sim` separado do server
+## Live match flow
 
-O núcleo da simulação é uma função pura `step(state, decisions, rng) → state'`, sem timers, sem rede, sem Date.now. Isso permite: rodar no NestJS (partidas ao vivo), rodar em worker/CLI para simulação em massa e balanceamento, e **rodar no navegador** para scrubbing de replay sem servidor — essencial para o site no Vercel funcionar de forma barata.
+1. A client connects to `/agent`, sends `hello` and enters the waiting queue.
+2. `AgentServer` pairs clients, starts a mirrored series and sends `welcome`, `match_start` and per-unit perceptions.
+3. Clients send decisions. The server verifies ownership and accumulates the current cycle's input.
+4. At the cycle interval, the server advances the pure simulation and emits the next perceptions and spectator state.
+5. Completed games persist results and JSONL replays. The series swaps sides and starts its next game.
 
-## apps/web (Vercel)
+`AgentGateway` and `SpectatorGateway` adapt NestJS sockets to `AgentServer`. The server owns the clock; the simulator never decides when real time has passed. The current default cycle is 500 ms, with five simulation ticks per cycle. A separate 350 ms decision deadline is not implemented.
 
-- **Next.js 15**, App Router, TypeScript, Tailwind.
-- **PixiJS 8** para a arena (WebGL): camadas para mapa, fog of war, unidades, trilhas, overlays de sensores, decoys.
-- Páginas: home/landing, `/watch/[matchId]` (ao vivo via WS), `/replay/[matchId]` (arquivo de replay + `packages/sim` no cliente), `/docs` (protocolo renderizado), `/leaderboard` (pós-MVP).
-- Estado de UI: Zustand. Dados: fetch de arquivos de replay estáticos (MVP) → API do server (pós-MVP).
-- No MVP, replays podem ser servidos como JSON estático do próprio repositório/storage — o site no Vercel funciona mesmo sem o server no ar.
+## Storage and API
 
-## apps/server (NestJS)
+A common `Store` interface supports `FileMatchStore` and `PgMatchStore`. Without `DATABASE_URL`, files live under `data/` relative to process cwd. PostgreSQL is selected at initialization when a database URL is available; tables are created lazily. Store implementations provide registration, result history, replay lookup and standings.
 
-- **Gateway WebSocket** (`@nestjs/websockets` + ws): salas de partida, canal de agentes, canal de espectadores.
-- **MatchService**: cria partidas, injeta semente, roda o loop de ticks chamando `packages/sim`, aplica timeout de decisão (350 ms → no-op).
-- **ReplayService**: grava todo input/output por ciclo em um arquivo de replay (JSONL comprimido) — o replay é a lista de decisões + semente, não snapshots.
-- **AgentRegistry** (pós-MVP): autenticação de agentes por token, filas de matchmaking, sandbox/limites.
-- Deploy: Railway/Fly.io/Render (WebSocket de longa duração não é o caso de uso do Vercel). O Vercel hospeda somente `apps/web`.
+REST routes: `GET /health`, `GET /api/leaderboard` (optional `season`), `GET /api/matches`, `GET /api/queue`, `GET /api/matches/:id/replay` and `POST /api/agents` with `{ "name": "my-agent" }`. Registration returns a token; guest play remains allowed.
 
-## Agentes
+## Web and replay flow
 
-- Conectam por **WebSocket** falando o protocolo JSON de [04-protocolo-agente.md](./04-protocolo-agente.md).
-- Qualquer linguagem; `packages/agents-sdk` oferece o caminho rápido em TS.
-- Torneios (pós-MVP): submissão por container Docker executado pelo orquestrador, com CPU/RAM/latência limitadas — remove vantagem de rede e permite partidas offline reproduzíveis.
+The implemented routes are `/`, `/compete`, `/matches`, `/leaderboard`, `/watch/demo` and `/replay/[id]`. React owns controls and PixiJS draws the arena. There is no Zustand dependency or generic `/watch/[matchId]` route.
 
-## Determinismo
+With `NEXT_PUBLIC_ECHO_API` set, match history and standings use the server; otherwise they use committed JSON under `public/data`. Replays are fetched as JSONL and reconstructed with `packages/sim` in the browser. The replay loader precomputes cycle states for scrubbing and compares the final-state hash. This is consistency checking, not cryptographic proof of origin.
 
-Regras invioláveis do `packages/sim`:
+## Deployment boundary
 
-1. PRNG próprio (mulberry32/xoshiro) semeado pela semente da partida; **proibido** `Math.random`, `Date.now`, iteração de `Map`/`Set` sem ordem definida.
-2. Ordem de aplicação de decisões fixa: por `unitId` lexicográfico.
-3. Aritmética em inteiros/fixed-point onde houver risco de divergência de float.
-4. Teste de **golden replay** no CI: replays canônicos re-simulados a cada commit; qualquer divergência de estado quebra o build.
+Vercel can host `apps/web` and its static replays. The authoritative server requires a persistent Node process supporting WebSocket, plus durable file storage or PostgreSQL. An isolated tournament places server and agent containers on the same internal Docker network. See [deployment](08-deploy.md) and [competition](07-campeonato.md).
 
-## Fluxo de uma partida ao vivo
+## Decisions
 
-```
-agentes ──WS──▶ server (coleta decisões do ciclo, timeout 350ms)
-                  │  step(state, decisions, rng)
-                  ├─▶ percepções filtradas por unidade ──WS──▶ agentes
-                  ├─▶ estado de espectador (fog opcional) ──WS──▶ web /watch
-                  └─▶ ReplayService (JSONL: seed + decisões + eventos)
-```
-
-## Fluxo de replay
-
-```
-web /replay ── fetch replay.jsonl ──▶ packages/sim no browser
-             └─ scrub/velocidade/rewind = re-simular do início até o ciclo N
-             └─ overlays: percepções e confiança gravadas no replay
-```
-
-## Stack resumida
-
-| Camada | Tecnologia |
-|---|---|
-| Front | Next.js 15, React 19, PixiJS 8, Tailwind, Zustand |
-| Server | NestJS 11, ws, Zod |
-| Núcleo | TypeScript puro (`packages/sim`), sem dependências de runtime |
-| Protocolo | JSON + Zod schemas versionados (`packages/protocol`) |
-| Monorepo | pnpm + Turborepo |
-| Qualidade | Vitest (sim/protocol), Playwright (web), ESLint, CI GitHub Actions |
-| Deploy | Vercel (web) · Railway/Fly (server) |
-
-## Decisões
-
-- 2026-08-25 — Simulador no servidor, nunca no cliente para partidas válidas: impede trapaça e garante fonte única de verdade; o sim no browser existe só para replay.
-- 2026-08-25 — Replay = semente + decisões (event sourcing), não snapshots: arquivos pequenos, verificáveis e à prova de adulteração (re-simular valida o resultado).
-- 2026-08-25 — Vercel só para o front: WebSockets persistentes e loops de tick não se encaixam em serverless.
+- 2026-08-25 — Keep live match authority on the server; browser simulation is for replay only.
+- 2026-08-25 — Store seed and decisions instead of full snapshots to make replay reproducible.
+- 2026-08-25 — Keep the persistent WebSocket server outside the web's serverless hosting boundary.

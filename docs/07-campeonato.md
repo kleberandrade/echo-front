@@ -1,64 +1,43 @@
-# 07 — Campeonato
+# 07 — Competition and sandbox
 
-Formato competitivo (pós-MVP; Sprint 6 entrega a base).
+## Local competition
 
-## Submissão de agentes
+The server pairs agents entering `/agent` and runs six games by default. Each seed is played twice with sides swapped. `welcome.payload.team` is authoritative for every game. The TypeScript harness creates fresh team-dependent bots after each welcome:
 
-| Fase                   | Formato                                           | Uso                                                   |
-| ---------------------- | ------------------------------------------------- | ----------------------------------------------------- |
-| MVP / friendly matches | WebSocket ao vivo (agente roda na máquina do dev) | Desenvolvimento e testes                              |
-| Torneio oficial        | **Container Docker** submetido ao orquestrador    | Isola rede, limita CPU/RAM, garante reprodutibilidade |
+```bash
+pnpm --filter @echo-front/agents-sdk match -- --url ws://localhost:3001/agent --bots courier,trickster
+```
 
-Contrato do container: imagem expõe um processo que conecta ao WS local do orquestrador (`AGENT_WS_URL` via env). Limites de referência: 1 vCPU, 512 MB, sem rede externa, 350 ms por decisão.
+The queue pairs arrivals immediately by default. A positive `matchmakingWindowMs` configured through `AgentServer.configure()` accumulates candidates and selects the closest Elo pair. `GET /api/queue` reports waiting clients. These internal options are not automatically environment variables.
 
-## Reprodutibilidade
+## Results, scores and seasons
 
-- Todas as partidas usam **sementes conhecidas** (publicadas com hash antes, valor depois — ver protocolo).
-- Cada confronto roda em série de N partidas com sementes distintas e **lados espelhados** (cada semente jogada 2×, trocando Cian/Magenta) para anular assimetrias residuais do mapa.
-- Todo resultado oficial acompanha o replay; qualquer pessoa pode re-simular e validar o `finalHash`.
+`scoreMatch` awards 3 points for a win, 1 for a draw, up to 1.5 for fragment deliveries (0.5 each), 0.1 per surviving unit and 0.2 for lower energy consumption when unequal. Standings include simple Elo (K=32) and are rebuilt from persisted history. A `season` label filters standings without deleting or physically separating old results. `GET /api/leaderboard?season=example` applies the filter.
 
-## Pontuação
+Run a small accelerated round-robin without overwriting committed public data:
 
-Por partida (Data Run):
+```bash
+pnpm --filter @echo-front/server tournament -- --games 2 --cycleMs 5 --modes data_run --data /tmp/echo-front-tournament-data --out /tmp/echo-front-tournament-public --season local-example
+```
 
-| Critério                                                  | Pontos               |
-| --------------------------------------------------------- | -------------------- |
-| Vitória                                                   | 3                    |
-| Empate                                                    | 1                    |
-| Fragmento entregue                                        | +0.5 cada (máx. 1.5) |
-| Unidades preservadas ao fim                               | +0.1 cada            |
-| Eficiência energética (menor consumo entre os dois times) | +0.2                 |
+This creates its own WebSocket listener, plays reference bots, checks stored replays and exports static data/replay files. Reusing the data directory accumulates history. Use fresh directories for isolated comparisons. The exporter currently copies replay files from file storage, so use its file-backed mode rather than `DATABASE_URL` for this workflow. Do not set an extremely short interval for agents requiring expensive computation.
 
-Métricas de mérito exibidas no leaderboard (não pontuam, mas contam a história): precisão das inferências (hipóteses `debug` vs. verdade da simulação), tempo médio de reação a eventos, taxa de vitória contra estilos distintos de estratégia, decoys "comprados" pelo adversário.
+## Container contract
 
-## Estrutura de torneio
+An agent image runs a process that connects outward to `AGENT_WS_URL`. `AGENT_NAME` and optional `AGENT_TOKEN` identify it. The reference orchestrator supplies 1 CPU, 512 MB memory, 128 PIDs, dropped capabilities and `no-new-privileges`, and attaches the container to an internal Docker network.
 
-1. **Fase de grupos**: round-robin em pools de 4–6 agentes, séries de 6 partidas (3 sementes × 2 lados).
-2. **Playoffs**: eliminação dupla, séries de 10 partidas.
-3. **Desafios especiais** (rodadas temáticas): composição restrita ("apenas 3 das 6 classes"), espelho ("mesmas unidades para todos"), Silent Hunt, Energy Crisis.
+The authoritative server must also run as a container on that network. Agent URLs use `ws://echo-front-orchestrator:3001/agent`, not `host.docker.internal`; host connectivity is not guaranteed inside an internal network.
 
-## Anti-abuso
+```bash
+./scripts/run-tournament-sandbox.sh
+```
 
-- Sem rede externa no container: impede coordenação fora do canal `message_to_team`.
-- Timeout rígido + orçamento de CPU: iguala condições de hardware.
-- Semente oculta até o fim: impede pré-cálculo do ruído.
-- Replays públicos: a comunidade audita comportamentos estranhos (collusion entre agentes do mesmo autor em grupos é tratada por regulamento).
-- **Rate limiting por IP** (sprint-11): `AgentServer` recusa novas conexões acima de um teto por minuto e por conexões simultâneas, por IP — protege o canal ao vivo (WS público) contra flood, independente do sandbox de containers abaixo.
+This requires a working Docker daemon and registry access for builds. It creates/reuses `echo-front-tournament`, builds two images, publishes server port 3001 for observation and runs two example agents. It waits up to 110 seconds for one completed game. It removes its named containers on success and leaves diagnostics on failure. Stop any local process already using port 3001 first. The script removes existing containers with its fixed names; do not reuse those names for unrelated work. See the [sandbox example](../apps/server/docker/sandbox-agent/README.md).
 
-## Sandbox Docker (sprint-11, topologia corrigida e verificada de ponta a ponta na sprint-13)
+## Operational limitations
 
-`apps/server/src/tournament/container-orchestrator.ts` implementa o contrato descrito acima: `ContainerOrchestrator.start(spec)` sobe a imagem do competidor numa rede Docker `--internal` (sem rota para a internet) com `--cpus 1 --memory 512m --pids-limit 128 --cap-drop ALL --security-opt no-new-privileges`, injetando `AGENT_WS_URL`/`AGENT_NAME`/`AGENT_TOKEN` via env — sem publicar porta (o container disca para o orquestrador, nunca o contrário). Exemplo de imagem mínima em `apps/server/docker/sandbox-agent/`.
+The development server permits guest names; registration tokens identify a stored name but do not form a mandatory authentication policy. Default seed scheduling is predictable. Spectator state is omniscient, with zero delay by default; `spectateDelayMs` is a code configuration option. IP limits constrain connection rates and concurrency, not arbitrary resource consumption by already connected clients. Docker resource flags and an internal network are useful controls, but not a complete hostile-code isolation boundary.
 
-**O orquestrador também roda como container, na mesma rede `--internal`** (`apps/server/Dockerfile`) — uma rede `--internal` só garante rota entre containers dela mesma, não pro host, então `AGENT_WS_URL` aponta pro _nome do container_ do orquestrador (`echo-front-orchestrator`), não pra `host.docker.internal`. `./scripts/run-tournament-sandbox.sh` sobe o fluxo inteiro (rede + orquestrador + 2 agentes de exemplo) e confirma que uma partida completa de ponta a ponta.
+There is no separate 350 ms decision cutoff. Clients should respond within the configured cycle and echo the current cycle number. Missing input keeps previous movement and causes no new action. Replays verify deterministic consistency, not the trustworthiness of a participant or result publisher.
 
-## Matchmaking e Elo persistente (sprint-12)
-
-- **Fila**: `AgentServer` pareia quem chega com quem está esperando. Com `matchmakingWindowMs: 0` (padrão), pareia assim que dá — FIFO de fato, já que só há um candidato por vez pra comparar. Com `matchmakingWindowMs > 0` (`configure({ matchmakingWindowMs: 400 })`), acumula quem chega dentro da janela antes de decidir, e escolhe o par com **Elo mais próximo** entre todos os que estão esperando — útil quando vários agentes se conectam perto um do outro no tempo (ex.: abertura de uma temporada). `/api/queue` expõe o tamanho atual da fila.
-- **Elo persiste de verdade**: `Store.standings()` sempre soma o histórico inteiro (arquivo `results.jsonl` do `dataDir`, ou tabela `results` no Postgres — ver `docs/08-deploy.md`, sprint-15) — não é recalculado do zero a cada execução do `tournament.ts` ou a cada reinício do server. Rodar o torneio duas vezes seguidas com o mesmo `--data`/banco **acumula** as partidas na mesma classificação.
-- **Temporadas**: `--season <rótulo>` no `tournament.ts` (ou `configure({ season })` no `AgentServer`) marca cada resultado com um rótulo, sem apagar nem separar fisicamente o histórico anterior. `store.standings('temporada-3')` filtra só por esse rótulo; `store.standings()` sem argumento continua somando tudo. `/api/leaderboard?season=temporada-3` expõe o mesmo filtro via API. Serve para isolar uma rodada específica (por exemplo, depois de mudar o código de um bot) sem precisar trocar de `dataDir` nem descartar dados.
-
-## Roadmap do campeonato
-
-1. Sprint 6: friendly matches por WS + leaderboard simples.
-2. Sprint 12: fila de matchmaking com pareamento por Elo, temporadas rotuladas sobre um histórico persistente.
-3. Depois: página de perfil de agente com estatísticas de inferência; rating Glicko-2 (o atual é Elo simples, K=32) se a amostra de partidas justificar o ganho de precisão sobre agentes novos/com poucas partidas.
+Group stages, double-elimination playoffs, inference-quality scoring and Glicko-2 remain organizational/design proposals. Automated command-construction tests do not establish that Docker builds or a complete container tournament ran on a particular host; report actual validation separately.

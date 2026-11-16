@@ -1,3 +1,7 @@
+# Historical sprint archive
+
+These original Portuguese notes preserve development history, proposed features and contemporary validation reports. They are not the current operational contract. Use the [English documentation index](../README.md) for supported setup, architecture, protocol and limitations. Historical completion claims have not necessarily been repeated on the current toolchain.
+
 # Sprints — Roadmap de Desenvolvimento
 
 Sprints de **2 semanas**, projeto solo/dupla. Cada sprint termina com uma **demo reproduzível** — se não dá para mostrar rodando, não está pronto. Sprints 0–4 entregam o vertical slice do MVP; 5–6 preparam o lançamento competitivo.

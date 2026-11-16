@@ -6,7 +6,7 @@ alwaysApply: false
 
 # apps/web
 
-Next.js 15 App Router, React 19, Tailwind, PixiJS 8. Deploy só deste app no Vercel (Root Directory `apps/web`).
+Next.js 16 App Router, React 19, Tailwind, PixiJS 8. Deploy só deste app no Vercel (Root Directory `apps/web`).
 
 - Sem lógica de partida válida no cliente. `packages/sim` no browser = replay/scrub
 - UI: Zustand. Replay MVP pode ser JSON/JSONL estático

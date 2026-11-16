@@ -1,74 +1,64 @@
-# 08 — Deploy e CI/CD
+# 08 — Environment, deployment and CI
 
-## Visão geral
+## Local configuration
 
-| Peça                                   | Onde                      | Como                                          |
-| -------------------------------------- | ------------------------- | --------------------------------------------- |
-| `apps/web` (site + replays)            | **Vercel**                | Git integration, deploy a cada push na `main` |
-| `apps/server` (partidas ao vivo + API) | Railway / Fly.io / Render | Node 22, processo longo com WebSocket         |
-| CI (typecheck, build, testes, smoke)   | **GitHub Actions**        | `.github/workflows/ci.yml`                    |
+Use Node.js 24 LTS (`.nvmrc`) and the exact pnpm version in `packageManager`. Run commands at the repository root unless shown otherwise. Shared packages need a build before apps resolve their `dist/` exports. `./scripts/start.sh` installs, builds and starts both applications; `--fast` skips install/build after those have succeeded.
 
-## Vercel (apps/web)
-
-Configuração única no painel da Vercel:
-
-1. **Import** do repositório `kleberandrade/echo-front`.
-2. **Root Directory:** `apps/web` (com "Include source files outside of the Root Directory" habilitado — é o padrão).
-3. Framework Next.js é detectado; o `apps/web/vercel.json` já define:
-   - `installCommand: pnpm install --frozen-lockfile` (instala o workspace inteiro);
-   - `buildCommand: cd ../.. && pnpm turbo run build --filter=@echo-front/web` (o turbo constrói `protocol` e `sim` antes do site — o Next resolve os pacotes do workspace pelo `dist/`).
-4. Variáveis de ambiente (opcionais):
-   - `NEXT_PUBLIC_ECHO_API` → URL do server (ex.: `https://echo-server.fly.dev`). Sem ela, `/leaderboard` e `/matches` usam os JSONs estáticos do torneio em `public/data/` — o site funciona 100% sem server.
-   - `NEXT_PUBLIC_ECHO_WS` → URL do canal de espectador (ex.: `wss://echo-server.fly.dev/spectate`) para o `/watch/demo` ao vivo.
-   - `NEXT_PUBLIC_SITE_URL` → domínio público do site (ex.: `https://echo-front.seudominio.com`), usado em `metadataBase`, `og:url`, `robots.txt` e `sitemap.xml` (`app/layout.tsx`, `app/robots.ts`, `app/sitemap.ts`). Sem ela, cai no fallback `https://echo-front.vercel.app` — **defina assim que o domínio de produção existir**, senão o link de compartilhamento (og:image, etc.) aponta pro lugar errado.
-
-A cada push na `main`, a Vercel faz build e publica; PRs ganham preview deployments automaticamente. O CI do GitHub roda em paralelo como portão de qualidade (a proteção de branch pode exigir o check `ci` verde antes do merge).
-
-## SEO e favicon
-
-- **Favicon e ícones** (`app/icon.tsx`, `app/apple-icon.tsx`): gerados via `next/og` (`ImageResponse`) em vez de arquivos estáticos — o desenho (anel ciano + ponto magenta, a mesma paleta de `globals.css`) fica no próprio código, sem depender de editor de imagem pra ajustar. O Next detecta esses arquivos automaticamente e injeta `<link rel="icon">`/`<link rel="apple-touch-icon">` no `<head>`.
-- **Imagem de compartilhamento** (`app/opengraph-image.tsx`, 1200×630): mesma técnica — usada como `og:image` e `twitter:image` (card `summary_large_image`) em qualquer link do site compartilhado no Slack/Twitter/WhatsApp/etc.
-- **Metadados** (`app/layout.tsx`): título com template (`%s · ECHO//FRONT` pras páginas internas), descrição, `openGraph`/`twitter`, `robots: { index: true, follow: true }`, `metadataBase` (ver `NEXT_PUBLIC_SITE_URL` acima).
-- **`robots.txt`/`sitemap.xml`** (`app/robots.ts`, `app/sitemap.ts`): convenção de arquivo do Next — libera indexação geral e lista as rotas estáticas (`/`, `/compete`, `/leaderboard`, `/matches`, `/watch/demo`). `/replay/[id]` fica de fora de propósito (uma URL por partida disputada, efêmera — o buscador chega lá a partir do link em `/matches`).
-
-## Server (apps/server)
-
-O simulador autoritativo precisa de processo persistente (loop de ticks + WebSocket) — fora do modelo serverless da Vercel. Em Railway/Fly/Render:
+The server reads `PORT` (default 3001) and `DATABASE_URL`. The browser reads `NEXT_PUBLIC_ECHO_API`, `NEXT_PUBLIC_ECHO_WS` and `NEXT_PUBLIC_SITE_URL`. For manual development startup:
 
 ```bash
-# build
-pnpm install --frozen-lockfile && pnpm turbo run build --filter=@echo-front/server
-# start
-node apps/server/dist/main.js        # PORT no env; /health para o healthcheck
+export NEXT_PUBLIC_ECHO_API=http://localhost:3001
+export NEXT_PUBLIC_ECHO_WS=ws://localhost:3001/spectate
+export NEXT_PUBLIC_SITE_URL=http://localhost:3000
+pnpm dev
 ```
 
-Persistência: dois modos, mesma interface (`Store`, `apps/server/src/match/store.ts` — pensada desde a sprint-06 pra essa troca sem tocar no resto).
+Turborepo explicitly forwards these development variables, hashes public build settings for cache correctness, and passes database credentials only to the development server process. Variables must be exported before starting/building Next.js. `NEXT_PUBLIC_*` values are public build-time configuration; never put secrets in them. Without the API variable, leaderboard/history use static JSON. Without a custom site URL, metadata falls back to `https://echo-front.vercel.app`. A production HTTPS site needs an HTTPS API and WSS spectator URL to avoid mixed-content restrictions. NestJS currently enables CORS globally; configure origins at your deployment boundary as required.
 
-- **Sem `DATABASE_URL`** (padrão): arquivos em disco (`data/agents.json`, `data/results.jsonl`, `data/replays/*.replay.jsonl`). Monte um volume no diretório de trabalho — sem ele, o histórico não sobrevive a um redeploy/restart.
-- **Com `DATABASE_URL`** (sprint-15): Postgres via `PgMatchStore` (`store-pg.ts`), ligado automaticamente por `AgentServer.initStore()`. Schema (`agents`/`results`/`replays`) é criado sob demanda na primeira query — não precisa rodar migração antes do primeiro deploy.
+No generic root `.env` loader is installed for the server. Supply server variables in the process environment or explicitly load a file with your process manager. Next.js follows its own application-root environment-file conventions.
 
-### Neon (Postgres gerenciado)
+## Persistence
 
-O usuário já adicionou a integração Neon×Vercel no projeto `apps/web`. Isso **não** configura `apps/server` sozinho — a integração cria o banco e injeta `DATABASE_URL` só nas env vars do projeto Vercel, e `apps/server` roda em Railway/Fly/Render, não na Vercel. Passo manual necessário:
+Without `DATABASE_URL`, `FileMatchStore` writes `data/agents.json`, `data/results.jsonl` and `data/replays/` relative to server process cwd. The workspace dev task runs in `apps/server`; a direct root-level `node apps/server/dist/main.js` uses the repository root instead. Choose a stable working directory and persistent volume before production use. Ephemeral storage loses history on replacement.
 
-1. No painel da Vercel, projeto do `apps/web` → Settings → Environment Variables → copiar o valor de `DATABASE_URL` (ou `POSTGRES_URL`, dependendo de como a integração nomeou) gerado pela integração Neon.
-2. Colar esse valor como `DATABASE_URL` nas env vars da plataforma que roda `apps/server` (Railway/Fly/Render).
-3. Redeploy do server — no próximo boot, `initStore()` detecta a env var e troca `FileMatchStore` por `PgMatchStore` automaticamente, sem mudança de código.
+With `DATABASE_URL`, `PgMatchStore` uses PostgreSQL and creates its tables lazily. Supply a connection string appropriate for the database provider, including its required TLS options. The server and web are separate deployments: a database variable configured only in Vercel's web project is not available to the server. Back up the database and restrict credentials/network access through your infrastructure. Schema creation is not a general-purpose migration system.
 
-Sem esse passo manual, `apps/server` continua no `FileMatchStore` (disco) — o Neon adicionado na Vercel fica sem uso até `DATABASE_URL` ser copiado pra lá.
+Tests use a separate `TEST_DATABASE_URL`. Point it only at a disposable test database: integration tests clear their tables. Tests without this variable skip PostgreSQL coverage.
 
-Para transmissão com delay anti-coaching, configure `agentServer.configure({ spectateDelayMs: 30000 })` no bootstrap (ou exponha via env quando necessário).
+## Production web
 
-## CI (GitHub Actions)
+`apps/web/vercel.json` builds the workspace dependencies before Next.js. For Vercel, set Root Directory to `apps/web`, allow files outside that directory and use a Node version matching package engines. Supply public API, WebSocket and site URLs before building. Preview/production deployment is a separate operation; local build validation does not publish a site.
 
-`.github/workflows/ci.yml`, dois jobs:
+The web can serve committed replays and standings without a game server. Live matches require a reachable persistent server. Icons, Open Graph image, metadata, sitemap and robots routes are generated by the Next.js app.
 
-1. **ci** — `pnpm typecheck` + `pnpm build` + `pnpm test` (protocol, sim com golden replays, agents-sdk, server com e2e de séries). Sobe um serviço `postgres:16` e define `TEST_DATABASE_URL`, então os testes do `PgMatchStore` (`store-pg.test.ts`, `agent-server.pg.e2e.test.ts`) rodam de verdade em vez de serem pulados.
-2. **smoke** — instala o Chromium do Playwright, sobe o site buildado e reproduz o replay demo: valida o placar renderizado após scrub e o `finalHash` re-simulado **no browser** (paridade Node×browser a cada commit). Screenshots sobem como artifact do workflow.
+## Production server
 
-## Checklist de release
+```bash
+pnpm install --frozen-lockfile
+pnpm turbo run build --filter=@echo-front/server
+PORT=3001 node apps/server/dist/main.js
+```
 
-1. `pnpm test` e `pnpm --filter @echo-front/web smoke` verdes localmente.
-2. Se o sim mudou de comportamento: golden replays regenerados e `SIM_VERSION` atualizado; replay demo regenerado (`pnpm --filter @echo-front/web gen:demo`).
-3. Se o torneio/agentes mudaram: `pnpm --filter @echo-front/server tournament` para atualizar `public/data` e os replays publicados.
-4. Push na `main` → CI verde → Vercel publica.
+Use a long-running Node process with WebSocket support, health checks at `/health`, correct reverse-proxy upgrade handling and durable storage. `apps/server/Dockerfile` packages a standalone server with workspace dependencies using pnpm deploy. Vercel's serverless web hosting is not the authoritative match loop host. Container sandbox topology is documented in [competition](07-campeonato.md).
+
+## Validation and CI
+
+```bash
+pnpm typecheck
+pnpm build
+pnpm test
+pnpm --filter @echo-front/web exec playwright install chromium
+pnpm test:smoke
+```
+
+The GitHub Actions workflow installs pinned dependencies, typechecks, builds, runs TypeScript tests on Node.js 24/26, and runs Chromium replay smoke validation with screenshot artifacts. A separate PostgreSQL job runs database integration files serially against a disposable PostgreSQL 17 service. Additional jobs validate the Python and Dart SDKs using their native test tools. Read `.github/workflows/ci.yml` for exact versions and commands; local checks do not imply a remote workflow has run.
+
+Golden fixtures pin deterministic simulation. Browser smoke checks production rendering, final score and replay hash. Native SDK tests cover connection/protocol behavior. Keep skipped integration tests and unavailable toolchains visible in validation reports.
+
+## Release preparation
+
+1. Validate typecheck, build, behavior tests and browser smoke.
+2. If simulation rules change, review `SIM_VERSION`, golden fixtures and demo replay generation (`node apps/web/scripts/gen-demo-replay.mjs` after building).
+3. If competition output changes, generate it into a temporary directory first and inspect results before replacing public data.
+4. Review license notices and environment/storage configuration.
+5. Commit reviewed work. Push, deployment, package publication and production data replacement require their own authorization.

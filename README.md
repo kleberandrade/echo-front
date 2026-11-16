@@ -1,74 +1,87 @@
 # ECHO//FRONT
 
-Arena tática 2,5D onde IAs competem por **percepção**, não por reflexo. Documentação completa em [`docs/`](./docs/README.md).
+[![CI](https://github.com/kleberandrade/echo-front/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kleberandrade/echo-front/actions/workflows/ci.yml)
+[![TypeScript 5.9](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js 24 / 26](https://img.shields.io/badge/Node.js-24%20%2F%2026-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Dart 3.11+](https://img.shields.io/badge/Dart-3.11%2B-0175C2?logo=dart&logoColor=white)](https://dart.dev/)
+[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## Estrutura
+A tactical 2.5D arena where AI agents compete through **perception**. Two teams interpret imperfect visual, thermal, sound and radar readings, transport data fragments and use decoys to mislead their opponents. The authoritative simulator, WebSocket server and PixiJS replay viewer share one deterministic simulation core.
 
-```
-apps/
-  web/          Next.js + PixiJS — site, espectador e replay (deploy: Vercel)
-  server/       NestJS — simulador autoritativo + gateway WebSocket
-packages/
-  protocol/     Schemas Zod + tipos do protocolo agente↔servidor
-  sim/          Núcleo determinístico da simulação (puro, sem I/O)
-  agents-sdk/   SDK TS + agentes de exemplo
-docs/           Visão, game design, arquitetura, protocolo, sprints
-```
+## Requirements
 
-## Quickstart
+- Node.js 24 LTS and the pnpm version pinned in `package.json`.
+- Python 3.11+ for the optional Python SDK; Dart 3.11+ for the optional Dart SDK (see each SDK's manifest for the supported minimum).
+- PostgreSQL for optional database integration tests; Docker for the optional tournament sandbox. Neither is required for the local file-backed server or static replay viewer.
+
+## Installation and quick start
 
 ```bash
-pnpm install
+git clone https://github.com/kleberandrade/echo-front.git
+cd echo-front
+corepack enable
+pnpm install --frozen-lockfile
 pnpm build
 pnpm test
-
-# desenvolvimento
-pnpm dev            # web em :3000, server em :3001
+./scripts/start.sh --fast
 ```
 
-Ou, para subir tudo de uma vez (install + build + dev, com `NEXT_PUBLIC_ECHO_API`/`NEXT_PUBLIC_ECHO_WS` já apontados pro server local):
+Open `http://localhost:3000` for the arena and `http://localhost:3001/health` for server health. `start.sh` configures the browser to use the local API and spectator socket. Stop with Ctrl+C. Run `./scripts/start.sh` without `--fast` to install and build first. If Corepack is unavailable, install the exact pnpm version from `packageManager` using your Node package manager.
+
+Shared packages resolve their compiled `dist/` files. Build before the first development run and rebuild after modifying `packages/`; these packages do not have watch tasks.
+
+## Run agents and reproducible examples
+
+In another terminal, with the server running:
 
 ```bash
-./scripts/start.sh              # primeira vez / depois de puxar mudanças
-./scripts/start.sh --fast       # pula install e build (dist/ já existe)
+pnpm --filter @echo-front/agents-sdk match -- --url ws://localhost:3001/agent --bots courier,trickster
 ```
 
-Testar o gateway WS (server rodando):
+Two agents join automatically and play a six-game series with mirrored sides. Each default game lasts up to 90 seconds. Open `/watch/demo` to watch the current match; `/matches` and `/leaderboard` show local server data when started with `start.sh`.
+
+For a fast headless run that needs no server:
 
 ```bash
-npx wscat -c ws://localhost:3001/agent
-> {"v":"0.1.0","type":"hello","payload":{"agentName":"meu-agente"}}
+pnpm sim:run --seed quickstart --cycles 20 --bots random,idle --out /tmp/echo-front.replay.jsonl
+pnpm sim:batch --n 4 --cycles 20 --botA courier --botB trickster --csv /tmp/echo-front.csv
 ```
 
-`./scripts/start.sh` acima é só o ambiente de dev (processos Node direto, sem container). O sandbox Docker do torneio oficial é separado — precisa de Docker de verdade instalado:
+CLI arguments follow the pnpm script name. See the [TypeScript SDK](packages/agents-sdk/README.md), [Python SDK](packages/agents-sdk-py/README.md) and [Dart SDK](packages/agents-sdk-dart/README.md) for agent examples. Use the local workspace; this quick start does not depend on registry publication.
+
+## Workspace
+
+- `apps/web`: Next.js App Router, React and PixiJS; arena, replays, leaderboard and match history.
+- `apps/server`: NestJS REST API and persistent WebSocket gateways, matchmaking and storage.
+- `packages/protocol`: canonical Zod schemas and TypeScript message types.
+- `packages/sim`: deterministic simulation, seeded sensors, maps and replay tools.
+- `packages/agents-sdk`: TypeScript WebSocket client, reference bots and headless checks.
+- `packages/agents-sdk-py`, `packages/agents-sdk-dart`: optional clients for other languages.
+
+## Configuration
+
+`PORT` configures the server (default `3001`). `DATABASE_URL` enables PostgreSQL; otherwise the server stores agents, results and replays under `data/` relative to its working directory. Web variables `NEXT_PUBLIC_ECHO_API`, `NEXT_PUBLIC_ECHO_WS` and `NEXT_PUBLIC_SITE_URL` configure API, live viewing and public metadata. Browser variables are captured when Next.js builds. See [environment and deployment](docs/08-deploy.md) for exact behavior and persistence requirements.
+
+## Validation
 
 ```bash
-./scripts/run-tournament-sandbox.sh   # rede --internal + orquestrador + 2 agentes de exemplo, tudo containerizado
+pnpm typecheck
+pnpm build
+pnpm test
+pnpm --filter @echo-front/web exec playwright install chromium
+pnpm --filter @echo-front/web exec node scripts/smoke.mjs
 ```
 
-Ver [docs/07-campeonato.md](./docs/07-campeonato.md) para o contrato completo.
+Vitest covers protocol validation, deterministic simulation, golden replays, bots, storage and live WebSocket matches. The Playwright smoke runs the production web server, scrubs the demo replay and checks the rendered score and browser-computed hash. PostgreSQL tests run only when `TEST_DATABASE_URL` is supplied; a skipped test is not a database validation. Python and Dart have their own test commands in their SDK READMEs. CI runs the supported checks; see [deployment and CI](docs/08-deploy.md).
 
-## Deploy
+## Documentation and limitations
 
-**Vercel publica só `apps/web`.** O `package.json` da raiz não tem `next` — se o Root Directory ficar no repo, o build quebra com _No Next.js version detected_.
+Start with the [documentation index](docs/README.md), [architecture](docs/03-arquitetura.md), [protocol](docs/04-protocolo-agente.md) and [simulation](docs/05-simulacao.md). Current operational guides are in English; [sprint notes](docs/sprints/README.md) remain a Portuguese historical archive.
 
-No projeto Vercel → **Settings → General / Build and Deployment**:
+Only `data_run`, `core_siege` and `silent_hunt` are implemented simulation modes. Other protocol enum values describe future work. The public spectator socket exposes the full match state. The default server accepts guest agents and its development seed schedule is predictable; it is not a hardened public tournament service. Decisions are collected on a 500 ms cycle, without a separate 350 ms deadline. See [competition](docs/07-campeonato.md) for operational limits and the optional container flow. Automated renderer tests do not establish playtest quality or competitive balance.
 
-| Setting                                  | Valor      |
-| ---------------------------------------- | ---------- |
-| Framework Preset                         | Next.js    |
-| Root Directory                           | `apps/web` |
-| Include files outside the root directory | ligado     |
-| Node.js Version                          | 22.x       |
+## License
 
-Depois: **Deployments → ⋯ no deploy falho → Redeploy**.
-
-- **Server:** Railway/Fly/Render (WebSocket persistente — fora do Vercel). Ver [docs/03-arquitetura.md](./docs/03-arquitetura.md).
-
-## Convenções
-
-- TypeScript strict em todo o repo; lógica pura (`sim`, `protocol`) com testes Vitest.
-- Protocolo versionado por SemVer — mudanças em [docs/04-protocolo-agente.md](./docs/04-protocolo-agente.md) acompanham os schemas em `packages/protocol`.
-- Roadmap e critérios de aceite por sprint em [docs/sprints/](./docs/sprints/README.md).
-- Commits: [Conventional Commits](https://www.conventionalcommits.org/) (`feat(sim): ...`). Husky formata o staged e valida a mensagem. Escopos: `web`, `server`, `sim`, `protocol`, `agents-sdk`, `docs`, `ci`, `repo`.
-- Agents e regras: [`AGENTS.md`](./AGENTS.md), `.cursor/`, `.claude/`.
+[MIT](LICENSE), copyright Kleber Andrade. Package licenses preserve the same attribution. Third-party dependencies retain their own licenses.
