@@ -48,13 +48,14 @@ if ! command -v pnpm >/dev/null 2>&1; then
 fi
 
 if ! command -v pnpm >/dev/null 2>&1; then
-  echo "erro: pnpm não encontrado e corepack não resolveu. Instale o Node >=20 com corepack, ou 'npm i -g pnpm'." >&2
+  echo "erro: pnpm não encontrado e corepack não resolveu. Instale o Node 24 LTS e 'npm i -g pnpm'." >&2
   exit 1
 fi
 
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
-if [ "$NODE_MAJOR" -lt 20 ] 2>/dev/null; then
-  echo "aviso: este projeto pede Node >=20 (engines em package.json); detectado: $(node -v 2>/dev/null || echo 'desconhecido')." >&2
+if [ "$NODE_MAJOR" != 24 ] && [ "$NODE_MAJOR" != 26 ]; then
+  echo "erro: use Node 24 ou 26 LTS (veja .nvmrc); detectado: $(node -v 2>/dev/null || echo 'desconhecido')." >&2
+  exit 1
 fi
 
 # --- install --------------------------------------------------------------
@@ -71,7 +72,7 @@ if [ "$SKIP_BUILD" = false ]; then
   pnpm build
 else
   echo "==> pnpm build (pulado — --skip-build)"
-  for pkg in packages/protocol packages/sim packages/agents-sdk; do
+  for pkg in packages/protocol packages/sim packages/agents-sdk apps/server; do
     if [ ! -d "$pkg/dist" ]; then
       echo "erro: $pkg/dist não existe — rode sem --skip-build ao menos uma vez." >&2
       exit 1

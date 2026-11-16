@@ -3,7 +3,8 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+      "env": ["NEXT_PUBLIC_ECHO_API", "NEXT_PUBLIC_ECHO_WS", "NEXT_PUBLIC_SITE_URL"]
     },
     "test": {
       "dependsOn": ["^build"],
@@ -15,7 +16,12 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": ["NEXT_PUBLIC_ECHO_API", "NEXT_PUBLIC_ECHO_WS", "NEXT_PUBLIC_SITE_URL"],
+      "passThroughEnv": ["PORT", "DATABASE_URL"]
+    },
+    "@echo-front/sim#test": {
+      "dependsOn": ["build"]
     }
   }
 }

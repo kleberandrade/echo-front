@@ -26,6 +26,10 @@ function makeBot(kind: string, team: 'cian' | 'magenta'): BotFn {
 
 const seed = arg('seed', 'dev-seed-1');
 const cycles = Number(arg('cycles', String(DEFAULT_CONFIG.totalCycles)));
+if (!Number.isSafeInteger(cycles) || cycles <= 0) {
+  console.error('--cycles must be a positive safe integer');
+  process.exit(1);
+}
 const [botA = 'random', botB = 'random'] = arg('bots', 'random,random').split(',');
 const out = arg('out', '');
 
