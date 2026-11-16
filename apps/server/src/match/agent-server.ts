@@ -100,6 +100,11 @@ interface Seat {
   name: string;
 }
 
+interface SpectatorSubscription {
+  agentName?: string;
+  match: LiveMatch | null;
+}
+
 function send(ws: WebSocket | null, msg: unknown): void {
   if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
 }
@@ -199,6 +204,10 @@ export class LiveMatch {
 
   removeSpectator(ws: WebSocket): void {
     this.spectators.delete(ws);
+  }
+
+  hasAgent(name: string): boolean {
+    return this.seats.cian.name === name || this.seats.magenta.name === name;
   }
 
   detachSeat(ws: WebSocket): void {
@@ -350,7 +359,7 @@ export class AgentServer {
   private bySocket = new Map<WebSocket, Series>();
   private invalidCount = new Map<WebSocket, number>();
   private latest: LiveMatch | null = null;
-  private spectators = new Set<WebSocket>();
+  private spectators = new Map<WebSocket, SpectatorSubscription>();
   private counter = 0;
   private agentLimiter: IpRateLimiter | null = null;
   private spectatorLimiter: IpRateLimiter | null = null;
@@ -443,7 +452,7 @@ export class AgentServer {
     ws.on('close', () => this.onClose(ws));
   }
 
-  attachSpectatorSocket(ws: WebSocket, ip?: string): void {
+  attachSpectatorSocket(ws: WebSocket, ip?: string, agentName?: string): void {
     if (ip && this.spectatorLimiter) {
       const r = this.spectatorLimiter.tryConnect(ip);
       if (!r.allowed) {
@@ -453,13 +462,23 @@ export class AgentServer {
       }
       ws.on('close', () => this.spectatorLimiter?.release(ip));
     }
-    this.spectators.add(ws);
+    const subscription = { agentName, match: this.matchForSpectator(agentName) };
+    this.spectators.set(ws, subscription);
     ws.on('close', () => {
       this.spectators.delete(ws);
-      this.latest?.removeSpectator(ws);
+      subscription.match?.removeSpectator(ws);
     });
-    if (this.latest && !this.latest.finished) this.latest.addSpectator(ws);
+    if (subscription.match) subscription.match.addSpectator(ws);
     else send(ws, { type: 'spectate_idle', message: 'nenhuma partida em andamento' });
+  }
+
+  private matchForSpectator(agentName?: string): LiveMatch | null {
+    if (agentName === undefined) return this.latest && !this.latest.finished ? this.latest : null;
+    for (const series of this.bySocket.values()) {
+      const match = series.current;
+      if (match && !match.finished && match.hasAgent(agentName)) return match;
+    }
+    return null;
   }
 
   private onMessage(ws: WebSocket, raw: Buffer): void {
@@ -548,10 +567,11 @@ export class AgentServer {
       this.opts,
       this.store,
       (m) => {
-        const previous = this.latest;
         this.latest = m;
-        for (const ws of this.spectators) {
-          previous?.removeSpectator(ws);
+        for (const [ws, subscription] of this.spectators) {
+          if (subscription.agentName !== undefined && !m.hasAgent(subscription.agentName)) continue;
+          subscription.match?.removeSpectator(ws);
+          subscription.match = m;
           m.addSpectator(ws);
         }
       },

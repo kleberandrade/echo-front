@@ -8,6 +8,9 @@ import { extractIp } from './rate-limiter.js';
 @WebSocketGateway({ path: '/spectate' })
 export class SpectatorGateway implements OnGatewayConnection {
   handleConnection(client: WebSocket, request?: IncomingMessage): void {
-    agentServer.attachSpectatorSocket(client, extractIp(request));
+    const agentName =
+      new URL(request?.url ?? '/spectate', 'http://localhost').searchParams.get('agent') ||
+      undefined;
+    agentServer.attachSpectatorSocket(client, extractIp(request), agentName);
   }
 }

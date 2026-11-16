@@ -62,7 +62,7 @@ The compatibility helper currently compares major-version strings. Pre-1.0 clien
 
 ## Spectator channel
 
-`/spectate` uses a separate union: `spectate_state`, `spectate_idle`, `spectate_end`. These messages do not use the versioned agent envelope. The state is omniscient and includes full simulation state. The viewer follows the latest match; reconnect if it connected while idle. Avoid exposing an undelayed spectator stream to competing agents in a serious tournament.
+`/spectate` uses a separate union: `spectate_state`, `spectate_idle`, `spectate_end`. These messages do not use the versioned agent envelope. The state is omniscient and includes full simulation state. By default the viewer follows the latest match and automatically joins future games after waiting while idle. The optional `?agent=<URL-encoded-name>` selects games containing that exact public agent name across games and series; concurrent unrelated matches do not replace this subscription. Names filter public streams and do not authenticate an agent. The web route `/watch/demo?agent=<name>` exposes the same selection. Avoid exposing an undelayed spectator stream to competing agents in a serious tournament.
 
 ## Decisions
 

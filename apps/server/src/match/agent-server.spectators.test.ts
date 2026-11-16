@@ -1,9 +1,11 @@
 import { EventEmitter } from 'node:events';
 import type WebSocket from 'ws';
+import type { IncomingMessage } from 'node:http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PROTOCOL_VERSION } from '@echo-front/protocol';
 import { DEFAULT_CONFIG } from '@echo-front/sim';
-import { AgentServer } from './agent-server.js';
+import { AgentServer, agentServer } from './agent-server.js';
+import { SpectatorGateway } from './spectator.gateway.js';
 
 class Socket extends EventEmitter {
   readonly OPEN = 1;
@@ -51,8 +53,8 @@ function setup(seriesGames = 2): AgentServer {
   return server;
 }
 
-function startSeries(server: AgentServer): void {
-  for (const name of ['a', 'b']) {
+function startSeries(server: AgentServer, names = ['a', 'b']): void {
+  for (const name of names) {
     const socket = new Socket();
     server.attachAgentSocket(socket.websocket);
     socket.hello(name);
@@ -62,8 +64,94 @@ function startSeries(server: AgentServer): void {
 describe('live spectator continuity', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllTimers();
     vi.useRealTimers();
+  });
+
+  it('waits for the requested agent and ignores unrelated concurrent matches', () => {
+    const server = setup();
+    const viewer = new Socket();
+    server.attachSpectatorSocket(viewer.websocket, undefined, 'kleber-vanguard');
+    startSeries(server);
+    expect(viewer.sent).toHaveLength(1);
+    expect(viewer.sent[0]?.type).toBe('spectate_idle');
+    startSeries(server, ['kleber-vanguard', 'hunter']);
+    expect(viewer.sent.at(-1)).toMatchObject({ type: 'spectate_state', matchId: 's2-g1' });
+    startSeries(server, ['demo-a', 'demo-b']);
+    vi.advanceTimersByTime(10);
+    expect(
+      viewer.sent.filter((frame) => frame.type === 'spectate_state').map((frame) => frame.matchId),
+    ).toEqual(['s2-g1', 's2-g1']);
+  });
+
+  it('finds an already running requested agent while an unrelated match is latest', () => {
+    const server = setup();
+    startSeries(server, ['hunter', 'kleber-vanguard']);
+    startSeries(server, ['demo-a', 'demo-b']);
+    const viewer = new Socket();
+    server.attachSpectatorSocket(viewer.websocket, undefined, 'kleber-vanguard');
+    expect(viewer.sent.at(-1)).toMatchObject({ type: 'spectate_state', matchId: 's1-g1' });
+  });
+
+  it('follows the named agent through swapped sides and into a new series', () => {
+    const server = setup();
+    const viewer = new Socket();
+    server.attachSpectatorSocket(viewer.websocket, undefined, 'kleber-vanguard');
+    startSeries(server, ['kleber-vanguard', 'hunter']);
+    vi.advanceTimersByTime(60);
+    startSeries(server, ['wanderer', 'kleber-vanguard']);
+    vi.advanceTimersByTime(10);
+    expect([
+      ...new Set(
+        viewer.sent
+          .filter((frame) => frame.type === 'spectate_state')
+          .map((frame) => frame.matchId),
+      ),
+    ]).toEqual(['s1-g1', 's1-g2', 's2-g1']);
+    expect(viewer.listenerCount('close')).toBe(1);
+  });
+
+  it('removes a disconnected targeted viewer from its match when another match is latest', () => {
+    const server = setup();
+    startSeries(server, ['kleber-vanguard', 'hunter']);
+    const viewer = new Socket();
+    server.attachSpectatorSocket(viewer.websocket, undefined, 'kleber-vanguard');
+    startSeries(server, ['demo-a', 'demo-b']);
+    viewer.close();
+    Object.defineProperty(viewer, 'readyState', {
+      get: () => {
+        throw new Error('Disconnected transport retained');
+      },
+    });
+    expect(() => vi.advanceTimersByTime(50)).not.toThrow();
+  });
+
+  it('passes the decoded optional agent query from the WebSocket request to the server', () => {
+    const attach = vi
+      .spyOn(agentServer, 'attachSpectatorSocket')
+      .mockImplementation(() => undefined);
+    const viewer = new Socket();
+    const request = {
+      url: '/spectate?agent=Kleber%20Vanguard',
+      socket: { remoteAddress: '127.0.0.1' },
+      headers: {},
+    } as IncomingMessage;
+    new SpectatorGateway().handleConnection(viewer.websocket, request);
+    expect(attach).toHaveBeenCalledWith(viewer.websocket, '127.0.0.1', 'Kleber Vanguard');
+  });
+
+  it.each(['/spectate', '/spectate?agent='])('preserves the default stream for %s', (url) => {
+    const attach = vi
+      .spyOn(agentServer, 'attachSpectatorSocket')
+      .mockImplementation(() => undefined);
+    const viewer = new Socket();
+    new SpectatorGateway().handleConnection(viewer.websocket, {
+      url,
+      socket: { remoteAddress: '127.0.0.1' },
+      headers: {},
+    } as IncomingMessage);
+    expect(attach).toHaveBeenCalledWith(viewer.websocket, '127.0.0.1', undefined);
   });
 
   it('starts streaming to an idle spectator when a match begins', () => {

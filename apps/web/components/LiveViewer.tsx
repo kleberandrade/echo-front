@@ -15,6 +15,7 @@ export default function LiveViewer({ wsUrl }: { wsUrl: string }) {
   const state = pair?.cur ?? null;
   const prev = pair?.prev ?? null;
   const [status, setStatus] = useState('conectando…');
+  const [matchId, setMatchId] = useState('');
   const [mode, setMode] = useState<ViewMode>('all');
   const [selected, setSelected] = useState<string | undefined>();
   const progressRef = useRef(0);
@@ -35,6 +36,7 @@ export default function LiveViewer({ wsUrl }: { wsUrl: string }) {
           const msg = parseSpectateMessage(data);
           if (msg.type === 'spectate_state') {
             const state = msg.state as unknown as MatchState;
+            setMatchId(msg.matchId);
             setPair((p) => ({ prev: p?.cur ?? state, cur: state }));
             lastAtRef.current = performance.now();
             setStatus('ao vivo');
@@ -79,7 +81,9 @@ export default function LiveViewer({ wsUrl }: { wsUrl: string }) {
         <>
           <div className="mb-2 flex items-center justify-center gap-6 text-sm">
             <span className="text-2xl font-bold text-cian">{state.score.cian}</span>
-            <span className="text-xs text-slate-500">ciclo {state.cycle}</span>
+            <span className="text-xs text-slate-500">
+              {matchId} · ciclo {state.cycle}
+            </span>
             <span className="text-2xl font-bold text-magenta">{state.score.magenta}</span>
           </div>
           <div className="border border-slate-800 bg-black/30">

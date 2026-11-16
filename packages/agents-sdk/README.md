@@ -30,6 +30,8 @@ pnpm --filter @echo-front/agents-sdk match -- --url ws://localhost:3001/agent --
 
 The harness plays a complete series and prints results. It reconstructs team-dependent bots from each welcome because sides change between games.
 
+For an objective-first strategy with public-server defaults, continuous reconnection and a named live stream, see [Kleber Vanguard](examples/kleber-agent.md). Its mirrored reference-bot benchmark is included and reproducible.
+
 Check a local decision module without a server:
 
 ```bash
