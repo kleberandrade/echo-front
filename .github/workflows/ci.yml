@@ -5,68 +5,117 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        node: [24, 26]
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
         with:
-          version: 10
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
           cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Build
-        run: pnpm build
-
-      - name: Test (inclui golden replays e e2e de séries)
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build
+      - name: Test protocol, simulation, SDK, server and replay behavior
         run: pnpm test
+      - name: Check example agent conformance
+        run: pnpm --filter @echo-front/agents-sdk agent:check examples/decide.mjs
+
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: echo
+          POSTGRES_PASSWORD: echo
+          POSTGRES_DB: echo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U echo -d echo_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://echo:echo@localhost:5432/echo_test
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @echo-front/server... build
+      - name: Test real PostgreSQL persistence and ranked series
+        run: pnpm --filter @echo-front/server exec vitest run src/match/store-pg.test.ts src/match/agent-server.pg.e2e.test.ts --no-file-parallelism
 
   smoke:
-    # Smoke visual: reproduz o replay demo no Chromium, faz scrub até o fim e
-    # valida o placar + o finalHash re-simulado no browser (paridade Node×browser).
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: ci
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
         with:
-          version: 10
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      - name: Install Chromium (Playwright)
-        working-directory: apps/web
-        run: npx playwright install --with-deps chromium
-
-      - name: Smoke do replay no browser
-        working-directory: apps/web
-        run: node scripts/smoke.mjs
-
-      - name: Upload screenshots
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Install Chromium
+        run: pnpm --filter @echo-front/web exec playwright install --with-deps chromium
+      - name: Verify replay rendering and browser simulation hash
+        run: pnpm test:smoke
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
           name: smoke-screenshots
           path: apps/web/screenshots/
           if-no-files-found: ignore
+
+  python-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        python: ['3.11', '3.13']
+    defaults:
+      run:
+        working-directory: packages/agents-sdk-py
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e '.[dev]'
+      - run: python -m pytest
+      - run: python examples/runner.py --help
+
+  dart-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/agents-sdk-dart
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: '3.11.5'
+      - run: dart pub get --enforce-lockfile
+      - run: dart format --output=none --set-exit-if-changed lib test example
+      - run: dart analyze --fatal-infos
+      - run: dart test
+      - run: dart run example/runner.dart --help
