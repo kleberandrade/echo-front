@@ -1,46 +1,17 @@
-# Imagem de produção do orquestrador (AgentServer) — sprint-12.
-#
-# Existe pra resolver um problema de topologia descoberto ao revisar o
-# sandbox Docker da sprint-11: a rede `--internal` criada por
-# ContainerOrchestrator (docs/07-campeonato.md) não garante rota pro HOST —
-# `--internal` desliga qualquer rota padrão pra fora da própria rede bridge,
-# e isso inclui `host.docker.internal` em pelo menos parte das
-# implementações (Docker Engine em Linux, por exemplo). O único destino
-# que uma rede `--internal` garante alcançável é OUTRO CONTAINER na MESMA
-# rede — daí o orquestrador (este Dockerfile) precisa rodar como container
-# na mesma rede que os agentes competidores, não no host.
-#
-# Build a partir da RAIZ do monorepo (precisa enxergar os workspace
-# packages via pnpm):
-#   docker build -f apps/server/Dockerfile -t echo-front/server:local .
-#
-# Rodar na rede do torneio (ver docs/07-campeonato.md e
-# scripts/run-tournament-sandbox.sh):
-#   docker network create --internal echo-front-tournament
-#   docker run -d --name echo-front-orchestrator --network echo-front-tournament \
-#     -p 3001:3001 echo-front/server:local
-#   # agentes competidores usam AGENT_WS_URL=ws://echo-front-orchestrator:3001/agent
-#   # ("echo-front-orchestrator" resolve via DNS interno do Docker dentro da
-#   # mesma rede — não depende de host.docker.internal nem de internet)
-
+# Build from the repository root. The server and agents share an internal
+# network; the sandbox does not depend on host port publishing.
 FROM node:24-slim AS build
+ENV CI=true
 RUN npm install --global pnpm@10.34.9
 WORKDIR /repo
 COPY . .
 RUN pnpm install --frozen-lockfile
-# agents-sdk entra na cadeia mesmo não sendo usado em runtime (main.js não
-# importa) porque tournament.ts (dentro de src/, então tsc compila junto)
-# importa os TIPOS dele — sem essa build, o tsc do server quebra com
-# "Cannot find module '@echo-front/agents-sdk'". Descoberto rodando o build
-# de verdade pela primeira vez (docker build numa máquina com Docker Hub).
+# tournament.ts imports SDK types, so the SDK must be built before the server.
 RUN pnpm --filter @echo-front/protocol build \
  && pnpm --filter @echo-front/sim build \
  && pnpm --filter @echo-front/agents-sdk build \
  && pnpm --filter @echo-front/server build
-# --legacy: workspace deps (protocol, sim) copiados como arquivos reais em
-# node_modules em vez de symlinks — necessário pra funcionar fora do
-# monorepo, na imagem final abaixo. Validado nesta sprint (sem Docker: só
-# `pnpm deploy` + `node dist/main.js` rodando de pé, respondendo /health).
+# Copy workspace dependencies as real files into a standalone runtime tree.
 RUN pnpm --filter @echo-front/server deploy --prod --legacy /out
 
 FROM node:24-slim AS runtime

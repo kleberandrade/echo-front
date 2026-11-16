@@ -8,3 +8,14 @@ node_modules
 **/data-tournament
 apps/server/data*
 apps/web/public/_to_delete
+**/.venv
+**/.dart_tool
+**/__pycache__
+**/.pytest_cache
+**/.metrics
+**/target
+**/coverage
+**/.coverage
+**/screenshots
+**/.env
+**/.env.*

@@ -5,8 +5,8 @@
 FROM node:24-slim
 
 WORKDIR /agent
-COPY package.json .
-RUN npm install --omit=dev
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 COPY agent.mjs .
 
 # Sem HEALTHCHECK/EXPOSE de propósito: o orquestrador controla o ciclo de
