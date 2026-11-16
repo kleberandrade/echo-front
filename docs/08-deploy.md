@@ -4,7 +4,7 @@
 
 Use Node.js 24 LTS (`.nvmrc`) and the exact pnpm version in `packageManager`. Run commands at the repository root unless shown otherwise. Shared packages need a build before apps resolve their `dist/` exports. `./scripts/start.sh` installs, builds and starts both applications; `--fast` skips install/build after those have succeeded.
 
-The server reads `PORT` (default 3001) and `DATABASE_URL`. The browser reads `NEXT_PUBLIC_ECHO_API`, `NEXT_PUBLIC_ECHO_WS` and `NEXT_PUBLIC_SITE_URL`. For manual development startup:
+The server reads `PORT` (default 3001), `DATABASE_URL`, optional `ECHO_WEB_ORIGIN` for browser API CORS, and `ECHO_DEMO_ENABLED` (`true` or `false`, default `false`). Invalid ports and ambiguous demo flags fail before startup. The browser reads `NEXT_PUBLIC_ECHO_API`, `NEXT_PUBLIC_ECHO_WS` and `NEXT_PUBLIC_SITE_URL`. For manual development startup:
 
 ```bash
 export NEXT_PUBLIC_ECHO_API=http://localhost:3001
@@ -13,7 +13,7 @@ export NEXT_PUBLIC_SITE_URL=http://localhost:3000
 pnpm dev
 ```
 
-Turborepo explicitly forwards these development variables, hashes public build settings for cache correctness, and passes database credentials only to the development server process. Variables must be exported before starting/building Next.js. `NEXT_PUBLIC_*` values are public build-time configuration; never put secrets in them. Without the API variable, leaderboard/history use static JSON. Without a custom site URL, metadata falls back to `https://echo-front.vercel.app`. A production HTTPS site needs an HTTPS API and WSS spectator URL to avoid mixed-content restrictions. NestJS currently enables CORS globally; configure origins at your deployment boundary as required.
+Turborepo explicitly forwards these development variables, hashes public build settings for cache correctness, and passes database credentials only to the development server process. Variables must be exported before starting/building Next.js. `NEXT_PUBLIC_*` values are public build-time configuration; never put secrets in them. Without the API variable, leaderboard/history use static JSON. Without a custom site URL, metadata falls back to `https://echo-front-ten.vercel.app`. A production HTTPS site needs an HTTPS API and WSS spectator URL to avoid mixed-content restrictions. NestJS currently enables CORS globally; configure origins at your deployment boundary as required.
 
 No generic root `.env` loader is installed for the server. Supply server variables in the process environment or explicitly load a file with your process manager. Next.js follows its own application-root environment-file conventions.
 
@@ -39,7 +39,7 @@ pnpm turbo run build --filter=@echo-front/server
 PORT=3001 node apps/server/dist/main.js
 ```
 
-Use a long-running Node process with WebSocket support, health checks at `/health`, correct reverse-proxy upgrade handling and durable storage. `apps/server/Dockerfile` packages a standalone server with workspace dependencies using pnpm deploy. Vercel's serverless web hosting is not the authoritative match loop host. Container sandbox topology is documented in [competition](07-campeonato.md).
+Use a long-running Node process with WebSocket support, health checks at `/health`, correct reverse-proxy upgrade handling and durable storage. `apps/server/Dockerfile` packages a standalone server with workspace dependencies using pnpm deploy. Vercel Functions now support WebSockets, but new connections can land on different function instances and connections have duration limits. The current arena keeps authoritative state in a single Node process, so this deployment uses a single persistent service rather than assuming instance affinity on Vercel. See the [Vercel connection placement documentation](https://vercel.com/kb/guide/do-vercel-serverless-functions-support-websocket-connections). Container sandbox topology is documented in [competition](07-campeonato.md).
 
 ## Validation and CI
 
@@ -62,3 +62,26 @@ Golden fixtures pin deterministic simulation. Browser smoke checks production re
 3. If competition output changes, generate it into a temporary directory first and inspect results before replacing public data.
 4. Review license notices and environment/storage configuration.
 5. Commit reviewed work. Push, deployment, package publication and production data replacement require their own authorization.
+
+## Render live test deployment
+
+The repository-root `render.yaml` defines a single free Docker web service using `apps/server/Dockerfile`, the repository root as context, `/health`, and deployments after CI checks pass. Keep one instance: the simulation, agent queue and spectator subscriptions share process memory. Render injects `PORT`; the server binds to `0.0.0.0`.
+
+`ECHO_DEMO_ENABLED=true` starts two reference agents over the existing local `/agent` gateway after the HTTP listener is ready. They play mirrored series, restart between series and retry transient connections with a single owned timer. The opt-in is disabled by default for normal competition servers. Shutdown cancels demo retries and closes clients. `ECHO_WEB_ORIGIN=https://echo-front-ten.vercel.app` limits browser API origins for this deployment.
+
+Once Render reports a healthy service, configure the Vercel **Production** environment with the actual assigned hostname:
+
+```text
+NEXT_PUBLIC_ECHO_API=https://<assigned-host>.onrender.com
+NEXT_PUBLIC_ECHO_WS=wss://<assigned-host>.onrender.com/spectate
+NEXT_PUBLIC_SITE_URL=https://echo-front-ten.vercel.app
+```
+
+Redeploy the web after saving these public build settings. Test `/watch/demo`: the canvas should show live cycle updates and continue into following matches without a refresh. The browser retries lost sockets with a 1–10 second backoff and sends a keepalive only while the viewer is connected. Cold starts can take about one minute.
+
+The [Render free instance](https://render.com/docs/free) is for testing: it can sleep after 15 minutes without inbound requests/messages, has shared monthly usage limits and loses local files on sleep, restart or redeploy. This blueprint provisions no paid database or disk. Results and replays are temporary; do not use the demo's file storage as durable tournament history. An active viewer's keepalive supports its current viewing session; no external uptime-pinging service is configured.
+
+### Decisions
+
+- 2026-11-16 — Keep authoritative matches in one process on a free Render test service, with the Next.js frontend on Vercel. Native Vercel WebSocket support does not guarantee that independent agent/spectator connections share an instance.
+- 2026-11-16 — Keep reference-agent demos opt-in, and keep connected viewers subscribed across subsequent games and series. Provisioning and public endpoint verification are separate from local build/test success.

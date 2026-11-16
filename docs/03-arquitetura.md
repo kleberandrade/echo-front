@@ -30,7 +30,7 @@ With `NEXT_PUBLIC_ECHO_API` set, match history and standings use the server; oth
 
 ## Deployment boundary
 
-Vercel can host `apps/web` and its static replays. The authoritative server requires a persistent Node process supporting WebSocket, plus durable file storage or PostgreSQL. An isolated tournament places server and agent containers on the same internal Docker network. See [deployment](08-deploy.md) and [competition](07-campeonato.md).
+Vercel can host `apps/web` and its static replays. The authoritative server requires a persistent Node process supporting WebSocket, plus durable file storage or PostgreSQL for lasting history. The free Render live-test service uses temporary files and opts into continuous reference-agent matches. An isolated tournament places server and agent containers on the same internal Docker network. See [deployment](08-deploy.md) and [competition](07-campeonato.md).
 
 ## Decisions
 

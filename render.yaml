@@ -1,0 +1,21 @@
+# One process owns match state; do not scale this service horizontally.
+services:
+  - type: web
+    name: echo-front-server
+    runtime: docker
+    repo: https://github.com/kleberandrade/echo-front
+    branch: main
+    plan: free
+    region: virginia
+    numInstances: 1
+    dockerfilePath: ./apps/server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ECHO_DEMO_ENABLED
+        value: 'true'
+      - key: ECHO_WEB_ORIGIN
+        value: https://echo-front-ten.vercel.app

@@ -62,7 +62,7 @@ CLI arguments follow the pnpm script name. See the [TypeScript SDK](packages/age
 
 ## Configuration
 
-`PORT` configures the server (default `3001`). `DATABASE_URL` enables PostgreSQL; otherwise the server stores agents, results and replays under `data/` relative to its working directory. Web variables `NEXT_PUBLIC_ECHO_API`, `NEXT_PUBLIC_ECHO_WS` and `NEXT_PUBLIC_SITE_URL` configure API, live viewing and public metadata. Browser variables are captured when Next.js builds. See [environment and deployment](docs/08-deploy.md) for exact behavior and persistence requirements.
+`PORT` configures the server (default `3001`). `DATABASE_URL` enables PostgreSQL; otherwise the server stores agents, results and replays under `data/` relative to its working directory. Web variables `NEXT_PUBLIC_ECHO_API`, `NEXT_PUBLIC_ECHO_WS` and `NEXT_PUBLIC_SITE_URL` configure API, live viewing and public metadata. Browser variables are captured when Next.js builds. The free Render test blueprint in `render.yaml` enables continuous demo agents with `ECHO_DEMO_ENABLED=true`; it uses temporary storage. See [environment and deployment](docs/08-deploy.md) for exact behavior and persistence requirements.
 
 ## Validation
 
