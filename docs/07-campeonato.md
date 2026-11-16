@@ -32,7 +32,23 @@ The authoritative server must also run as a container on that network. Agent URL
 ./scripts/run-tournament-sandbox.sh
 ```
 
-This requires a working Docker daemon and registry access for builds. It creates/reuses `echo-front-tournament`, builds two images, publishes server port 3001 for observation and runs two example agents. It waits up to 110 seconds for one completed game. It removes its named containers on success and leaves diagnostics on failure. Stop any local process already using port 3001 first. The script removes existing containers with its fixed names; do not reuse those names for unrelated work. See the [sandbox example](../apps/server/docker/sandbox-agent/README.md).
+This requires Node.js, a working Docker daemon and registry access for builds. It creates/reuses the internal `echo-front-tournament` network, builds two images and runs two example agents. An existing network must explicitly be internal, or initialization fails. The script removes existing containers with its fixed names; do not reuse those names for unrelated work.
+
+No host port is published or required. Health checks and REST requests execute inside the authoritative server container, so they cannot accidentally reach an unrelated development server. Docker/OrbStack may suppress published ports on internal networks; this does not prevent container-to-container play.
+
+By default, the script waits up to 115 polling iterations for one completed game (about 90 seconds of play). Each iteration includes a Docker/HTTP probe and a one-second pause. For all six default games, including mirrored seeds and swapped sides:
+
+```bash
+SANDBOX_MATCHES=6 ./scripts/run-tournament-sandbox.sh
+```
+
+A full series takes about nine minutes; its polling limit is 590 iterations. `SANDBOX_MATCHES` accepts integers from 1 to 6. Before waiting, the script checks effective CPU/memory/PID/capability settings and confirms both agents have only the internal network and no published ports. It attempts a bounded TCP connection from each agent to `1.1.1.1:443`, which must fail or time out. This checks one endpoint, not all possible external paths.
+
+Every completed replay is fetched from the container API and re-simulated using the simulator installed in the production image. The check requires actual recorded decisions, completed simulation, matching seed/hash/score and the two expected agent identities. With all six games present, it also checks series membership, game numbering and seed/side mirroring. Containers are removed only after validation succeeds; failures leave their logs and containers for diagnosis. The internal network is retained on local success. See the [sandbox example](../apps/server/docker/sandbox-agent/README.md).
+
+## Decisions
+
+- 2026-11-16 — Probe health and results within the authoritative container, removing the assumption that an internal Docker network can publish a usable host port. Validate the network before reusing it and verify recorded replays before cleanup.
 
 ## Operational limitations
 

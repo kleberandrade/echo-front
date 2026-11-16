@@ -51,7 +51,7 @@ pnpm --filter @echo-front/web exec playwright install chromium
 pnpm test:smoke
 ```
 
-The GitHub Actions workflow installs pinned dependencies, typechecks, builds, runs TypeScript tests on Node.js 24/26, and runs Chromium replay smoke validation with screenshot artifacts. A separate PostgreSQL job runs database integration files serially against a disposable PostgreSQL 17 service. Additional jobs validate the Python and Dart SDKs using their native test tools. Read `.github/workflows/ci.yml` for exact versions and commands; local checks do not imply a remote workflow has run.
+The GitHub Actions workflow installs pinned dependencies, typechecks, builds, runs TypeScript tests on Node.js 24/26, and runs Chromium replay smoke validation with screenshot artifacts. A separate PostgreSQL job runs database integration files serially against a disposable PostgreSQL 17 service. Additional jobs validate the Python and Dart SDKs using their native test tools. The Docker sandbox job builds both images and verifies a real isolated match, effective agent limits, a blocked external TCP probe and deterministic replay hashes; its log is uploaded as an artifact. Read `.github/workflows/ci.yml` for exact versions and commands; local checks do not imply a remote workflow has run.
 
 Golden fixtures pin deterministic simulation. Browser smoke checks production rendering, final score and replay hash. Native SDK tests cover connection/protocol behavior. Keep skipped integration tests and unavailable toolchains visible in validation reports.
 
