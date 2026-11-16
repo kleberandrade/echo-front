@@ -194,8 +194,11 @@ export class LiveMatch {
 
   addSpectator(ws: WebSocket): void {
     this.spectators.add(ws);
-    ws.on('close', () => this.spectators.delete(ws));
     send(ws, { type: 'spectate_state', matchId: this.id, state: this.state });
+  }
+
+  removeSpectator(ws: WebSocket): void {
+    this.spectators.delete(ws);
   }
 
   detachSeat(ws: WebSocket): void {
@@ -347,6 +350,7 @@ export class AgentServer {
   private bySocket = new Map<WebSocket, Series>();
   private invalidCount = new Map<WebSocket, number>();
   private latest: LiveMatch | null = null;
+  private spectators = new Set<WebSocket>();
   private counter = 0;
   private agentLimiter: IpRateLimiter | null = null;
   private spectatorLimiter: IpRateLimiter | null = null;
@@ -449,6 +453,11 @@ export class AgentServer {
       }
       ws.on('close', () => this.spectatorLimiter?.release(ip));
     }
+    this.spectators.add(ws);
+    ws.on('close', () => {
+      this.spectators.delete(ws);
+      this.latest?.removeSpectator(ws);
+    });
     if (this.latest && !this.latest.finished) this.latest.addSpectator(ws);
     else send(ws, { type: 'spectate_idle', message: 'nenhuma partida em andamento' });
   }
@@ -539,7 +548,12 @@ export class AgentServer {
       this.opts,
       this.store,
       (m) => {
+        const previous = this.latest;
         this.latest = m;
+        for (const ws of this.spectators) {
+          previous?.removeSpectator(ws);
+          m.addSpectator(ws);
+        }
       },
       () => {
         this.bySocket.delete(a.ws);
